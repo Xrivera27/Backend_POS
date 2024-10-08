@@ -5,11 +5,14 @@ const router = express.Router();
 const registerRoutes = require('./empresaRoutes');
 const loginRoutes = require('./loginRoutes');
 const categoriaRoutes = require('./categoriaRoutes');
+const recuperarRoutes = require('./recuperarRouter');
 
 // Usar las rutas web
 router.use('/empresa', registerRoutes);
 router.use('/login', loginRoutes);
 router.use('/categoria', categoriaRoutes);
+router.use('/recuperar', recuperarRoutes); 
+
 
 
 

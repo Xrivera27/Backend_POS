@@ -13,11 +13,6 @@ const register = async (req, res) => {
 
 
 
-  // Validación básica de los campos
-  //if (!nombre || !categoria || !correo_principal || !telefono_principal) {
-  // return res.status(400).json({ error: 'Faltan campos obligatorios' });
-  //}
-
   try {
     // Insertar en la tabla "Empresas"
     const {

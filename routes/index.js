@@ -8,6 +8,8 @@ const categoriaRoutes = require('./categoriaRoutes');
 const recuperarRoutes = require('./recuperarRouter');
 const perfilRoutes = require('./perfilRoutes');
 const sucursaleRoutes = require('./sucursaleRoutes');
+const usuarioRoutes = require('./usuarioRoutes');
+
 
 // Usar las rutas web
 router.use('/empresa', registerRoutes);
@@ -16,6 +18,8 @@ router.use('/categoria', categoriaRoutes);
 router.use('/recuperar', recuperarRoutes); 
 router.use('/perfil', perfilRoutes);
 router.use('/sucursales', sucursaleRoutes);
+router.use('/usuarios', usuarioRoutes);
+
 
 
 

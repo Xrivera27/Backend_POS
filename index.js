@@ -4,11 +4,13 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
+const { sessionActiva } = require('./middlewares/sessionMiddleware.js');
 const routes = require('./routes'); // Importar el index de rutas
 
 // Inicializar Express
 const app = express();
 app.use(cors());
+app.use(sessionActiva);
 app.use(express.json());
 
 // Configurar Supabase y agregarlo al objeto de request

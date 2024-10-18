@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken'); // Para generar tokens JWT
+const {setCurrentUsername} = require('../services/userLogIn.js');
 
 // Controlador de login
 exports.login = async (req, res) => {
@@ -21,6 +22,7 @@ exports.login = async (req, res) => {
     if (password !== user.contraseña) {
       return res.status(401).json({ message: 'Contraseña incorrecta' });
     }
+    setCurrentUsername(username);
 
     // Genera un token JWT
     const token = jwt.sign(
@@ -33,7 +35,8 @@ exports.login = async (req, res) => {
     return res.json({
       message: 'Login exitoso',
       token,
-      role: user.id_rol,
+      role: user.id_rol
+
     });
   } catch (err) {
     return res.status(500).json({ message: 'Error interno del servidor', error: err.message });

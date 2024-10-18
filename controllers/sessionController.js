@@ -11,7 +11,7 @@ const getSesion = async (req, res) => {
         .eq('nombre_usuario', `${username}`);// Selecciona solo los campos que necesitas
   
       if (error) {
-        return res.status(500).json({ error: 'Error al obtener Usuarios: ' + error.message }); g6
+        return res.status(500).json({ error: 'Error al obtener Usuarios: ' + error.message });
       }
   
       res.status(200).json(usuario); // Devuelve las categorías al frontend

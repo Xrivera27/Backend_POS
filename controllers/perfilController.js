@@ -1,4 +1,5 @@
 // perfilController.js
+
 const supabase = require('../supabaseClient'); // Asegúrate de tener tu cliente de Supabase configurado
 
 exports.getUserProfile = async (req, res) => {
@@ -23,3 +24,4 @@ exports.getUserProfile = async (req, res) => {
         res.status(500).json({ error: 'Error al obtener el perfil del usuario' });
     }
 };
+

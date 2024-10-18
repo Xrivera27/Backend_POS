@@ -14,6 +14,7 @@ const getCategorias = async (req, res) => {
     res.status(200).json(categorias); // Devuelve las categorías al frontend
   } catch (error) {
     res.status(500).json({ error: 'Error inesperado al obtener categorías' });
+    
   }
 };
 

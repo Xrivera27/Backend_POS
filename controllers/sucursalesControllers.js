@@ -1,4 +1,6 @@
 const { insertarRelacion } = require('../db/sucursalUsuarioSvc.js');
+const { getEmpresaId } = require('../db/empresaSvc.js');
+
 const getSucursales = async (req, res) => {
     const supabase = req.supabase;
 
@@ -40,6 +42,7 @@ const getSucursalesbyUsuario = async (req, res) => {
 const patchSucursal = async (req, res) => {
     const supabase = req.supabase;
     const { nombre_administrativo, correo, direccion, telefono } = req.body;
+
     const id_sucursal = req.params.id_sucursal;
 
     try {
@@ -81,10 +84,13 @@ const deleteSucursal = async (id_sucursal, supabase) => {
 const postSucursal = async (req, res) => {
     const supabase = req.supabase;
     const { nombre_administrativo, correo, direccion, telefono } = req.body;
-    const id_empresa = req.params.id_empresa;
+   // const id_empresa = req.params.id_empresa;
     const id_usuario = req.params.id_usuario;
 
+    
+
     try {
+        const id_empresa = await getEmpresaId(id_usuario, supabase);
         const { data: sucursal, error } = await supabase.from('Sucursales').insert(
             {
             id_empresa: id_empresa,

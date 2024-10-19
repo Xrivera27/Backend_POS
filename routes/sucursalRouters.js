@@ -7,6 +7,6 @@ router.get('/', getSucursales);
 router.get('/empresa/:id_usuario', getSucursalesbyUsuario);
 router.patch('/actualizar-sucursal/:id_sucursal', patchSucursal);
 router.patch('/desactivar-sucursal/:id_sucursal', desactivarSucursal);
-router.post('/crear-sucursal/:id_usuario/:id_empresa', postSucursal);
+router.post('/crear-sucursal/:id_usuario/', postSucursal);
 
 module.exports = router;

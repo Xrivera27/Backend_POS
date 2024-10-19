@@ -10,10 +10,10 @@ const perfilRoutes = require('./perfilRoutes');
 const sucursaleRoutes = require('./sucursaleRoutes');
 const usuarioRoutes = require('./usuarioRoutes');
 
-const routerCategoriaProducto = require('./categoriaProutes.js');
-const routerUsuario = require('./usuarioRoutes.js');
-const routerSesion = require('./sesionRoutes.js');
-const routerSucursal = require('./sucursalRouters.js');
+const categoriProductoRouter = require('./categoriaProutes.js');
+const usuarioRouter = require('./usuarioRoutes.js');
+const sesionRouter = require('./sesionRoutes.js');
+const sucursalRouter = require('./sucursalRouters.js');
 
 
 // Usar las rutas web
@@ -28,10 +28,10 @@ router.use('/usuarios', usuarioRoutes);
 
 
 
-router.use('/categoria-producto', routerCategoriaProducto);
-router.use('/usuario', routerUsuario);
-router.use('/sesion-user', routerSesion);
-router.use('/sucursales', routerSucursal);
+router.use('/categoria-producto', categoriProductoRouter);
+router.use('/usuario', usuarioRouter);
+router.use('/sesion-user', sesionRouter);
+router.use('/sucursales', sucursalRouter);
 
 
 

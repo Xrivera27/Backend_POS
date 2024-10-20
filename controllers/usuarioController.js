@@ -1,5 +1,7 @@
 const { response } = require('express');
+const { insertarRelacion } = require('../db/sucursalUsuarioSvc.js');
 const { getEmpresaId } = require('../db/empresaSvc.js');
+
 
 const getUsuario = async (req, res) => {
   const supabase = req.supabase;
@@ -35,29 +37,89 @@ const getUsuarioOfEmpresa = async (req, res) => {
   const supabase = req.supabase;
   const id_usuario = req.params.id_usuario;
   try {
-    const id_empresa_param = await getEmpresaId( id_usuario, supabase );
-    
+    const id_empresa_param = await getEmpresaId(id_usuario, supabase);
+
     try {
-      const { data: usuarios, error } = await supabase.rpc('get_usuariosbyidusuario', {id_empresa_param})
+      const { data: usuarios, error } = await supabase.rpc('get_usuariosbyidusuario', { id_empresa_param })
 
       if (error) {
         throw new Error('Ocurrió un error en la consulta: ' + error.message);
-    }
+      }
 
-    // Verificamos si se encontró el usuario
-    console.log(usuarios);
-    res.status(200).json(usuarios);
+      // Verificamos si se encontró el usuario
+      console.log(usuarios);
+      res.status(200).json(usuarios);
 
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
-    
+
   } catch (error) {
 
     res.status(500).json(error);
   }
 }
 
+const postUsuario = async (req, res) => {
+  const supabase = req.supabase;
+  const { nombre, apellido, nombre_usuario, contraseña, correo, telefono, direccion, id_rol, id_sucursal } = req.body;
+
+  try {
+
+    const { data: usuario, error } = await supabase.from('Usuarios').insert(
+      {
+        nombre: nombre,
+        apellido: apellido,
+        nombre_usuario: nombre_usuario,
+        contraseña: contraseña,
+        correo: correo,
+        telefono: telefono,
+        direccion: direccion,
+        id_rol: id_rol,
+        estado: 'Activo'
+      }).select('*');
+
+    if (error) {
+      console.log(error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    const nuevaRelacion = await insertarRelacion(usuario[0].id_usuario, id_sucursal, supabase);
+
+    if (nuevaRelacion != true) {
+      console.log('entro aqui');
+      console.log(usuario[0].id_usuario);
+      const borrarUsuario = await deleteUsuario(usuario[0].id_usuario, supabase);
+      if(borrarUsuario) console.log('Se borro el usuario creado');
+
+      throw new Error('Fallo del servidor');
+    }
+
+    return res.status(200).json(usuario);
+
+  } catch (error) {
+    console.log('ha habido un error en la api');
+    res.status(500).json({ error: error.message });
+  }
+
+}
+
+const deleteUsuario = async (id_usuario, supabase) => {
+  try {
+    const { data, error } = await supabase.from('Usuarios').delete().eq('id_usuario', id_usuario);
+
+    if (error) {
+      console.log(error);
+      throw error;
+    }
+    return true;
+
+  } catch (error) {
+    throw new Error('Fallo del servidor: Relacion vacia');
+  }
+
+}
+
 module.exports = {
-  getUsuario, getUsuarioOfEmpresa
+  getUsuario, getUsuarioOfEmpresa, postUsuario
 };

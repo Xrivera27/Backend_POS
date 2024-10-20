@@ -9,7 +9,7 @@ const insertarRelacion = async (id_usuario, id_sucursal, supabase) => {
 
         if (error)
         {
-            throw new Error('Ocurrio un error en la creacion de la relacion sucursal-usuario');
+            return 'Ocurrio un error en la creacion de la relacion sucursal-usuario';
         }
 
         if (data.length > 0) {

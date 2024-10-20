@@ -9,6 +9,7 @@ const recuperarRoutes = require('./recuperarRouter');
 const perfilRoutes = require('./perfilRoutes');
 const sucursaleRoutes = require('./sucursaleRoutes');
 const usuarioRoutes = require('./usuarioRoutes');
+const configuserRoutes = require('./configuserRoutes');
 
 
 
@@ -17,7 +18,7 @@ const usuarioRouter = require('./usuarioRoutes.js');
 const sesionRouter = require('./sesionRoutes.js');
 const sucursalRouter = require('./sucursalRouters.js');
 
-const rolRouter = require('./rolRouter.js')
+
 
 
 // Usar las rutas web
@@ -29,6 +30,7 @@ router.use('/recuperar', recuperarRoutes);
 router.use('/perfil', perfilRoutes);
 router.use('/sucursales', sucursaleRoutes);
 router.use('/usuarios', usuarioRoutes);
+router.use('/configuser', configuserRoutes);
 
 
 
@@ -36,7 +38,7 @@ router.use('/categoria-producto', categoriProductoRouter);
 router.use('/usuario', usuarioRouter);
 router.use('/sesion-user', sesionRouter);
 router.use('/sucursales', sucursalRouter);
-router.use('/roles', rolRouter);
+
 
 
 

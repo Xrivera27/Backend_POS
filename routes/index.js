@@ -18,6 +18,8 @@ const usuarioRouter = require('./usuarioRoutes.js');
 const sesionRouter = require('./sesionRoutes.js');
 const sucursalRouter = require('./sucursalRouters.js');
 
+const rolRouter = require('./rolRouter.js')
+
 
 
 
@@ -38,6 +40,7 @@ router.use('/categoria-producto', categoriProductoRouter);
 router.use('/usuario', usuarioRouter);
 router.use('/sesion-user', sesionRouter);
 router.use('/sucursales', sucursalRouter);
+router.use('/roles', rolRouter);
 
 
 

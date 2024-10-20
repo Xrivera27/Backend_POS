@@ -76,7 +76,7 @@ const postUsuario = async (req, res) => {
         telefono: telefono,
         direccion: direccion,
         id_rol: id_rol,
-        estado: 'Activo'
+        estado: true
       }).select('*');
 
     if (error) {

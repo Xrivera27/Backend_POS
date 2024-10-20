@@ -14,6 +14,7 @@ const routerCategoriaProducto = require('./categoriaProutes.js');
 const routerUsuario = require('./usuarioRoutes.js');
 const routerSesion = require('./sesionRoutes.js');
 const routerSucursal = require('./sucursalRouters.js');
+const configuserRoutes = require('./configuserRoutes.js');
 
 
 // Usar las rutas web
@@ -25,6 +26,7 @@ router.use('/recuperar', recuperarRoutes);
 router.use('/perfil', perfilRoutes);
 router.use('/sucursales', sucursaleRoutes);
 router.use('/usuarios', usuarioRoutes);
+router.use('/configuser', configuserRoutes);
 
 
 

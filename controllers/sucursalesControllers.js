@@ -22,9 +22,9 @@ const getSucursalesbyUsuario = async (req, res) => {
     const supabase = req.supabase;
 
     try {
-        const id_usuario = req.params.id_usuario;
-        const { data: sucursal, error } = await supabase.rpc('get_sucursales', {id_usuario})
-        .select('*');
+        const id_usuario_param = req.params.id_usuario;
+        const { data: sucursal, error } = await supabase.rpc('obtener_sucursal', {id_usuario_param})
+        
 
         if (error){
             res.status(500).json({ Error: 'Error al obtener Sucursales' + error.message });
@@ -117,4 +117,27 @@ const postSucursal = async (req, res) => {
     }
 }
 
-module.exports = { getSucursales, getSucursalesbyUsuario, patchSucursal, postSucursal }
+const desactivarSucursal = async (req, res) => {
+    const supabase = req.supabase;
+    const { estado } = req.body;
+    const id_sucursal = req.params.id_sucursal;
+
+    try {
+        const { data, error } = await supabase.from('Sucursales').update(
+            {
+             estado: estado
+        }).eq('id_sucursal', id_sucursal);
+
+        if(error) {
+         return res.status(500).json({error: error.message});
+        }
+
+        res.status(200).json(data);
+
+    } catch (error) {
+        console.log('ha habido un error en la api');
+        res.status(500).json({error: error.message});
+    }
+}
+
+module.exports = { getSucursales, getSucursalesbyUsuario, patchSucursal, postSucursal, desactivarSucursal }

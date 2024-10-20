@@ -10,7 +10,6 @@ const getRoles = async (req, res) => {
             return res.status(500).json({ message: 'Ocurrió un error al obtener la información.' });
         }
 
-        console.log(roles);
         return res.status(200).json(roles);
 
     } catch (error) {

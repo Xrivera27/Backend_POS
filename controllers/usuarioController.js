@@ -101,7 +101,40 @@ const postUsuario = async (req, res) => {
     console.log('ha habido un error en la api');
     res.status(500).json({ error: error.message });
   }
+}
 
+const patchUsuario = async (req, res) => {
+  const supabase = req.supabase;
+  const { nombre, apellido, nombre_usuario, contraseña, correo, telefono, direccion, id_rol, id_sucursal } = req.body;
+  const id_usuario = req.params.id_usuario;
+
+  try {
+      const { data, error } = await supabase.from('Usuarios').update(
+           {
+        nombre: nombre,
+        apellido: apellido,
+        nombre_usuario: nombre_usuario,
+        contraseña: contraseña,
+        correo: correo,
+        telefono: telefono,
+        direccion: direccion,
+        id_rol: id_rol,
+      }).eq('id_usuario', id_usuario);
+
+      const { dataSucursal, errorSucursal } = await supabase.from('sucursales_usuarios').update({
+        id_sucursal: id_sucursal
+      }).eq('id_usuario', id_usuario);
+
+      if(error || errorSucursal) {
+       return res.status(500).json({error: error.message});
+      }
+
+      res.status(200).json({ data, dataSucursal });
+
+  } catch (error) {
+      console.log('ha habido un error en la api');
+      res.status(500).json({error: error.message});
+  }
 }
 
 const deleteUsuario = async (id_usuario, supabase) => {
@@ -120,6 +153,29 @@ const deleteUsuario = async (id_usuario, supabase) => {
 
 }
 
+const desactivarUsuario = async (req, res) => {
+  const supabase = req.supabase;
+  const { estado } = req.body;
+  const id_usuario = req.params.id_usuario;
+
+  try {
+      const { data, error } = await supabase.from('Usuarios').update(
+          {
+           estado: estado
+      }).eq('id_usuario', id_usuario);
+
+      if(error) {
+       return res.status(500).json({error: error.message});
+      }
+
+      res.status(200).json(data);
+
+  } catch (error) {
+      console.log('ha habido un error en la api');
+      res.status(500).json({error: error.message});
+  }
+}
+
 module.exports = {
-  getUsuario, getUsuarioOfEmpresa, postUsuario
+  getUsuario, getUsuarioOfEmpresa, postUsuario, patchUsuario, desactivarUsuario
 };

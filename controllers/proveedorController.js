@@ -28,17 +28,44 @@ const getProveedoresbyUsuario = async (req, res) => {
 
     const { data: proveedores, error } = await supabase.rpc('obtener_proveedores_empresa', {id_empresa_param});
 
+    let proveedoresActivos = []
+
     for (const proveedor of proveedores){
-       proveedor.estadoLocal = await filtroProveedoresActivos(proveedor.id, id_empresa_param, supabase);
+       const esActivo = await filtroProveedoresActivos(proveedor.id, id_empresa_param, supabase);
+       if (esActivo){
+        proveedoresActivos.push(proveedor);
+       }
     }
     if(error){
         return res.status(500);
     }
     
-    res.status(200).json(proveedores)
+    res.status(200).json(proveedoresActivos);
    } catch (error) {
     
    }
+}
+
+const getProveedoresbyUsuarioTotales = async (req, res) => {
+    const supabase = req.supabase;
+    try {
+        const id_usuario = req.params.id_usuario;
+        const id_empresa_param = await getEmpresaId(id_usuario, supabase);
+    
+        const { data: proveedores, error } = await supabase.rpc('obtener_proveedores_empresa', {id_empresa_param});
+    
+        for (const proveedor of proveedores){
+           proveedor.estadoLocal = await filtroProveedoresActivos(proveedor.id, id_empresa_param, supabase);
+        }
+        if(error){
+            return res.status(500);
+        }
+        
+        res.status(200).json(proveedores)
+       } catch (error) {
+        
+       }
+
 }
 
 const filtroProveedoresActivos = async (id_proveedor, id_empresa, supabase) => {

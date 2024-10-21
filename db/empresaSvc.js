@@ -4,7 +4,7 @@ const getEmpresaId = async (id_usuario_param, supabase) => {
         const { data: id_empresa, error } = await supabase.rpc('obtener_id_empresa', { id_usuario_param });
 
         if(error){
-            throw 'Ocurrio un error al obtener sucursal';
+            throw 'Ocurrio un error al obtener empresa';
         }
         return id_empresa;
 

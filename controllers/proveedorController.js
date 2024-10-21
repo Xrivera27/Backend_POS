@@ -27,7 +27,10 @@ const getProveedoresbyUsuario = async (req, res) => {
     const id_empresa_param = await getEmpresaId(id_usuario, supabase);
 
     const { data: proveedores, error } = await supabase.rpc('obtener_proveedores_empresa', {id_empresa_param});
-    
+
+    for (const proveedor of proveedores){
+       proveedor.estadoLocal = await filtroProveedoresActivos(proveedor.id, id_empresa_param, supabase);
+    }
     if(error){
         return res.status(500);
     }
@@ -36,6 +39,31 @@ const getProveedoresbyUsuario = async (req, res) => {
    } catch (error) {
     
    }
+}
+
+const filtroProveedoresActivos = async (id_proveedor, id_empresa, supabase) => {
+    try {
+        const { data: relaciones, error} = await supabase
+        .from('empresas_proveedores')
+        .select('*')
+        .eq('id_proveedor', id_proveedor)
+        .eq('id_empresa', id_empresa);
+
+        console.log(relaciones[0]);
+
+        if (error){
+            throw error;
+        }
+
+        if(relaciones[0].estado){
+            return true;
+        }
+
+        return false;
+
+    } catch (error) {
+        throw error;
+    }
 }
 
 const postProveedor = async (req, res) => {
@@ -87,6 +115,7 @@ const patchProveedor = async (req, res) => {
     const id_proveedor = req.params.id_proveedor;
 
     try {
+        console.log(id_usuario);
         const id_empresa_param = await getEmpresaId(id_usuario, supabase);
         const relacionExistente = await existeRelacion(id_empresa_param, id_proveedor, supabase);
 

@@ -1,27 +1,33 @@
-// perfilController.js
+const getUsuarioPerfil = async (req, res) => {
+    const supabase = req.supabase;
 
-const supabase = require('../supabaseClient'); // Asegúrate de tener tu cliente de Supabase configurado
-
-exports.getUserProfile = async (req, res) => {
     try {
-        const id_usuario = req.user.id; // Supongamos que tienes el ID del usuario en req.user
+        const id_usuario = req.user.id_usuario; // Se obtiene del token decodificado
 
-        // Busca al usuario en la base de datos
-        const { data: user, error } = await supabase
-            .from('Usuarios')
-            .select('nombre')
-            .eq('id_usuario', id_usuario)
-            .single(); // Solo debe haber un usuario
-
-        if (error) {
-            return res.status(400).json({ error: error.message });
+        if (!id_usuario) {
+            return res.status(400).json({ error: 'ID de usuario no proporcionado en el token' });
         }
 
-        // Enviar los datos de perfil (en este caso, el nombre de usuario)
-        res.json({ username: user.nombre });
+        const { data: usuario, error } = await supabase
+            .from('Usuarios')
+            .select('nombre_usuario') // Solo seleccionamos el campo necesario
+            .eq('id_usuario', id_usuario)
+            .single();
+
+        if (error) {
+            return res.status(500).json({ error: 'Error al obtener el perfil de usuario: ' + error.message });
+        }
+
+        if (!usuario) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+
+        res.status(200).json(usuario); // Devuelve solo el nombre de usuario
     } catch (error) {
-        console.error('Error en getUserProfile:', error); // Para ayudar a depurar
-        res.status(500).json({ error: 'Error al obtener el perfil del usuario' });
+        res.status(500).json({ error: 'Error inesperado al obtener el perfil' });
     }
 };
 
+module.exports = {
+    getUsuarioPerfil,
+};

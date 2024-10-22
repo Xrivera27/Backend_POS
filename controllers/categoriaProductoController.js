@@ -28,7 +28,8 @@ const getCategoriaProductoOfEmpresa = async (req, res) => {
         const { data, error } = await supabase
         .from('categoria_producto')
         .select('*')
-        .or(`id_empresa.eq.${id_empresa}, id_empresa.is.null`);
+        .eq('id_empresa', id_empresa)
+        .eq('estado', true);
 
         if (error){
             res.status(500).json({ Error: 'Error al obtener categorias' + error.message });

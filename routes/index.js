@@ -20,6 +20,7 @@ const sucursalRouter = require('./sucursalRouters.js');
 const proveedorRouter = require('./proveedorRoutes.js');
 
 const rolRouter = require('./rolRouter.js')
+const unidadMedidaRouter = require('./unidadMedidaRoutes.js')
 
 
 
@@ -43,6 +44,7 @@ router.use('/sesion-user', sesionRouter);
 router.use('/sucursales', sucursalRouter);
 router.use('/proveedores', proveedorRouter);
 router.use('/roles', rolRouter);
+router.use('/unidad-medida', unidadMedidaRouter);
 
 
 

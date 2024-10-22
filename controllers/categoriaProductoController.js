@@ -104,5 +104,72 @@ const patchCategoria = async (req, res) => {
     }
 }
 
+const desactivarCategoria = async (req, res) => {
+    const supabase = req.supabase;
 
-module.exports = {getCategoriaProducto, getCategoriaProductoOfEmpresa, postCategoria, patchCategoria}
+    try {
+        const { estado } = req.body;
+        const id_categoria = req.params.id_categoria;
+
+        const { data: categorias, error } = await supabase
+            .from('categoria_producto')
+            .update({
+                estado: estado
+            })
+            .eq('id_categoria', id_categoria)
+            .select('*');
+
+        // Manejo de errores de la consulta
+        if (error) {
+            return res.status(500).json({ error: error.message });
+        }
+
+        // Si no se encuentra ninguna categoría con el id proporcionado
+        if (categorias.length === 0) {
+            return res.status(404).json({ error: 'Categoría no encontrada' });
+        }
+
+        // Enviar las categorías actualizadas
+        res.status(200).json(categorias);
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Ocurrió un error en el servidor' });
+    }
+}
+
+
+//para implementar se deberan hacer las revisiones de seguridad primero
+const eliminarCategoria = async (req, res) => {
+    const supabase = req.supabase;
+
+    try {
+        const id_categoria = req.params.id_categoria;
+
+        const { data: categorias, error } = await supabase
+            .from('categoria_producto')
+            .delete()
+            .eq('id_categoria', id_categoria)
+            .select('*');
+
+        // Manejo de errores de la consulta
+        if (error) {
+            return res.status(500).json({ error: error.message });
+        }
+
+        // Si no se encuentra ninguna categoría con el id proporcionado
+        if (categorias.length === 0) {
+            return res.status(404).json({ error: 'Categoría no encontrada' });
+        }
+
+        // Enviar las categorías actualizadas
+        res.status(200).json(categorias);
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Ocurrió un error en el servidor' });
+    }
+}
+
+
+module.exports = {getCategoriaProducto, getCategoriaProductoOfEmpresa, postCategoria, patchCategoria, desactivarCategoria, eliminarCategoria}

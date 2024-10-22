@@ -32,14 +32,16 @@ const getProveedoresbyUsuario = async (req, res) => {
 
     for (const proveedor of proveedores){
        const esActivo = await filtroProveedoresActivos(proveedor.id, id_empresa_param, supabase);
-       if (esActivo){
+
+       if (esActivo && proveedor.estado == true){
+        
         proveedoresActivos.push(proveedor);
        }
     }
     if(error){
         return res.status(500);
     }
-    
+    console.log(proveedoresActivos);
     res.status(200).json(proveedoresActivos);
    } catch (error) {
     
@@ -65,7 +67,6 @@ const getProveedoresbyUsuarioTotales = async (req, res) => {
        } catch (error) {
         
        }
-
 }
 
 const filtroProveedoresActivos = async (id_proveedor, id_empresa, supabase) => {
@@ -76,7 +77,7 @@ const filtroProveedoresActivos = async (id_proveedor, id_empresa, supabase) => {
         .eq('id_proveedor', id_proveedor)
         .eq('id_empresa', id_empresa);
 
-        console.log(relaciones[0]);
+
 
         if (error){
             throw error;
@@ -142,7 +143,6 @@ const patchProveedor = async (req, res) => {
     const id_proveedor = req.params.id_proveedor;
 
     try {
-        console.log(id_usuario);
         const id_empresa_param = await getEmpresaId(id_usuario, supabase);
         const relacionExistente = await existeRelacion(id_empresa_param, id_proveedor, supabase);
 

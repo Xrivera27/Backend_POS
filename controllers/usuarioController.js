@@ -47,8 +47,9 @@ const getUsuarioOfEmpresa = async (req, res) => {
       }
 
       // Verificamos si se encontró el usuario
-      console.log(usuarios);
-      res.status(200).json(usuarios);
+
+      const usuarioSinActual = usuarios.filter( usuario => usuario.id_usuario != id_usuario ).filter( usuario => usuario.estado == true )  ;
+      res.status(200).json(usuarioSinActual);
 
     } catch (error) {
       res.status(500).json({ error: error.message });

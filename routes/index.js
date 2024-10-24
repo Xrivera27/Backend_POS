@@ -10,17 +10,14 @@ const perfilRoutes = require('./perfilRoutes');
 const sucursaleRoutes = require('./sucursaleRoutes');
 const usuarioRoutes = require('./usuarioRoutes');
 const configuserRoutes = require('./configuserRoutes');
-
-
-
 const categoriProductoRouter = require('./categoriaProutes.js');
 const usuarioRouter = require('./usuarioRoutes.js');
 const sesionRouter = require('./sesionRoutes.js');
 const sucursalRouter = require('./sucursalRouters.js');
 const proveedorRouter = require('./proveedorRoutes.js');
-
 const rolRouter = require('./rolRouter.js')
 const unidadMedidaRouter = require('./unidadMedidaRoutes.js')
+const configempresaRoutes = require('./configempresaRoutes');
 
 
 
@@ -35,6 +32,7 @@ router.use('/perfil', perfilRoutes);
 router.use('/sucursales', sucursaleRoutes);
 router.use('/usuarios', usuarioRoutes);
 router.use('/configuser', configuserRoutes);
+router.use('/configempresa', configempresaRoutes);
 
 
 

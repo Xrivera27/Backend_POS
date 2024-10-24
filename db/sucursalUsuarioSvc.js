@@ -1,3 +1,21 @@
+const getSucursalesbyUser = async (id_usuario, supabase) => {
+    try {
+        const { data: sucursales, error} = await supabase
+        .from('sucursales_usuarios')
+        .select('id_sucursal')
+        .eq('id_usuario', id_usuario);
+
+        if (error) {
+            throw 'Ocurrio un error al obtenr sucursales de Usuario';
+        }
+
+        return sucursales;
+
+    } catch (error) {
+        throw new Error(error);
+    }
+}
+
 const insertarRelacion = async (id_usuario, id_sucursal, supabase) => {
 
     try {
@@ -43,4 +61,4 @@ const deleteRelacion = async (id, supabase) => {
     }
 }
 
-module.exports = { insertarRelacion }
+module.exports = { insertarRelacion, getSucursalesbyUser }

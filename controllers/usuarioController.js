@@ -1,5 +1,5 @@
 const { response } = require('express');
-const { insertarRelacion } = require('../db/sucursalUsuarioSvc.js');
+const { insertarRelacion, getSucursalesbyUser } = require('../db/sucursalUsuarioSvc.js');
 const { getEmpresaId } = require('../db/empresaSvc.js');
 
 
@@ -40,7 +40,12 @@ const getUsuarioOfEmpresa = async (req, res) => {
     const id_empresa_param = await getEmpresaId(id_usuario, supabase);
 
     try {
-      const { data: usuarios, error } = await supabase.rpc('get_usuariosbyidusuario', { id_empresa_param })
+      const { data: usuarios, error } = await supabase.rpc('get_usuariosbyidusuario', { id_empresa_param });
+
+      for (const usuario of usuarios){
+        const sucursalesUsuario = await getSucursalesbyUser(usuario.id_usuario, supabase);
+        usuario.sucursales = sucursalesUsuario;
+      }
 
       if (error) {
         throw new Error('Ocurrió un error en la consulta: ' + error.message);

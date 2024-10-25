@@ -3,13 +3,20 @@ const getSucursalesbyUser = async (id_usuario, supabase) => {
         const { data: sucursales, error} = await supabase
         .from('sucursales_usuarios')
         .select('id_sucursal')
-        .eq('id_usuario', id_usuario);
+        .eq('id_usuario', id_usuario)
+        .single();
+
 
         if (error) {
-            throw 'Ocurrio un error al obtenr sucursales de Usuario';
+            throw 'Ocurrio un error al obtener sucursales de Usuario';
         }
 
-        return sucursales;
+        // console.log(`Usuario ${id_usuario} ${sucursales}`);
+        if (sucursales.length > 1){
+            throw 'Se esperaba un unico registro';
+        }
+
+        return sucursales.id_sucursal;
 
     } catch (error) {
         throw new Error(error);

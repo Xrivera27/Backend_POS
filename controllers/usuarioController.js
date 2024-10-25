@@ -42,10 +42,7 @@ const getUsuarioOfEmpresa = async (req, res) => {
     try {
       const { data: usuarios, error } = await supabase.rpc('get_usuariosbyidusuario', { id_empresa_param });
 
-      for (const usuario of usuarios){
-        const sucursalesUsuario = await getSucursalesbyUser(usuario.id_usuario, supabase);
-        usuario.sucursales = sucursalesUsuario;
-      }
+     
 
       if (error) {
         throw new Error('Ocurrió un error en la consulta: ' + error.message);
@@ -53,8 +50,13 @@ const getUsuarioOfEmpresa = async (req, res) => {
 
       // Verificamos si se encontró el usuario
 
-      const usuarioSinActual = usuarios.filter( usuario => usuario.id_usuario != id_usuario ).filter( usuario => usuario.estado == true )  ;
-      res.status(200).json(usuarioSinActual);
+      const filtroUsers = usuarios.filter( usuario => usuario.id_rol != 4 ).filter( usuario => usuario.estado == true );
+
+      for (const usuario of filtroUsers){
+        usuario.sucursales= await getSucursalesbyUser(usuario.id_usuario, supabase);
+      }
+
+      res.status(200).json(filtroUsers);
 
     } catch (error) {
       res.status(500).json({ error: error.message });
@@ -93,13 +95,14 @@ const postUsuario = async (req, res) => {
     const nuevaRelacion = await insertarRelacion(usuario[0].id_usuario, id_sucursal, supabase);
 
     if (nuevaRelacion != true) {
-      console.log('entro aqui');
-      console.log(usuario[0].id_usuario);
+ 
       const borrarUsuario = await deleteUsuario(usuario[0].id_usuario, supabase);
       if(borrarUsuario) console.log('Se borro el usuario creado');
 
       throw new Error('Fallo del servidor');
     }
+
+    usuario[0].sucursales = await getSucursalesbyUser(usuario[0].id_usuario, supabase);
 
     return res.status(200).json(usuario);
 

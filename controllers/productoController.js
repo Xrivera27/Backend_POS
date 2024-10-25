@@ -21,4 +21,5 @@ const getProductosOfInventory = async (req, res) => {
     }
 }
 
+
 module.exports = { getProductosOfInventory }

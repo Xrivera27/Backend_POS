@@ -19,6 +19,7 @@ const rolRouter = require('./rolRouter.js')
 const unidadMedidaRouter = require('./unidadMedidaRoutes.js')
 const configempresaRoutes = require('./configempresaRoutes');
 const configureempresaRoutes = require('./updateempresaRoutes');
+const productosRoutes = require('./productosRoutes.js');
 
 
 
@@ -35,6 +36,7 @@ router.use('/usuarios', usuarioRoutes);
 router.use('/configuser', configuserRoutes);
 router.use('/configempresa', configempresaRoutes);
 router.use('/updateempresa', configureempresaRoutes);
+router.use('/productos-empresa', productosRoutes);
 
 
 router.use('/categoria-producto', categoriProductoRouter);

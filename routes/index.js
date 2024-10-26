@@ -50,7 +50,10 @@ router.use('/unidad-medida', unidadMedidaRouter);
 
 
 
+router.use('/productos', productosRoutes);
 
+router.use('/sar', sarRoutes);
+router.use('/updsar', updatesarRoutes);
 
 
 

@@ -19,6 +19,8 @@ const rolRouter = require('./rolRouter.js')
 const unidadMedidaRouter = require('./unidadMedidaRoutes.js')
 const configempresaRoutes = require('./configempresaRoutes');
 const configureempresaRoutes = require('./updateempresaRoutes');
+const sarRoutes = require('./sarRoutes');
+const updatesarRoutes = require('./updatesarRoutes');
 
 
 
@@ -35,7 +37,8 @@ router.use('/usuarios', usuarioRoutes);
 router.use('/configuser', configuserRoutes);
 router.use('/configempresa', configempresaRoutes);
 router.use('/updateempresa', configureempresaRoutes);
-
+router.use('/sar', sarRoutes);
+router.use('/updsar', updatesarRoutes);
 
 router.use('/categoria-producto', categoriProductoRouter);
 router.use('/usuario', usuarioRouter);

@@ -4,11 +4,11 @@ const getEmpresaInfo = async (req, res) => {
     const supabase = req.supabase;
     try {
         const id_usuario = req.user.id_usuario;
-        console.log('ID Usuario:', id_usuario);
+       
 
         // Obtiene directamente el id_empresa
         const id_empresa = await getEmpresaId(id_usuario, supabase);
-        console.log('ID Empresa obtenido:', id_empresa);
+        
 
         if (!id_empresa) {
             console.error('No se encontró un ID de empresa para el usuario:', id_usuario);

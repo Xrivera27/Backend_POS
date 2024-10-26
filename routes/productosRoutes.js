@@ -2,10 +2,10 @@
 
 const express = require('express');
 const router = express.Router();
-const { getProductosOfInventory } = require('../controllers/productoController');
+const { getProductosOfInventory, postProducto } = require('../controllers/productoController');
 
 router.get('/:id_usuario', getProductosOfInventory);
-// router.post('/', sucursaleController.createSucursal);
+router.post('/crear', postProducto);
 // router.put('/:id', sucursaleController.updateSucursal);
 // router.delete('/:id', sucursaleController.deleteSucursal);
 

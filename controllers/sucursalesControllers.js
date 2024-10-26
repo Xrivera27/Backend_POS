@@ -87,8 +87,6 @@ const postSucursal = async (req, res) => {
    // const id_empresa = req.params.id_empresa;
     const id_usuario = req.params.id_usuario;
 
-    
-
     try {
         const id_empresa = await getEmpresaId(id_usuario, supabase);
         const { data: sucursal, error } = await supabase.from('Sucursales').insert(

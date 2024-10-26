@@ -27,8 +27,8 @@ const getUnidadbyUsuario = async (req, res) => {
 
     const { data: unidad, error } = await supabase
     .from('unidad_de_medida')
-    .select('*')
-    .or(`id_empresa.eq.${id_empresa_param}, id_empresa.is.null`);
+    .select('id_medida, medida')
+    .eq('id_empresa', id_empresa_param);
 
     if(error){
         return res.status(500);

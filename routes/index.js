@@ -36,7 +36,7 @@ router.use('/usuarios', usuarioRoutes);
 router.use('/configuser', configuserRoutes);
 router.use('/configempresa', configempresaRoutes);
 router.use('/updateempresa', configureempresaRoutes);
-router.use('/productos-empresa', productosRoutes);
+router.use('/productos', productosRoutes);
 
 
 router.use('/categoria-producto', categoriProductoRouter);

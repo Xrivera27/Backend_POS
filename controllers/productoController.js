@@ -24,12 +24,12 @@ const getProductosOfInventory = async (req, res) => {
 
 const postProducto = async (req, res) => {
     const supabase = req.supabase;
-    const { codigo, nombre, descripcion, precio_unitario, precio_mayorista, proveedor, unidad_medida, impuesto, id_usuario  } = req.body;
+    const { codigo_producto, nombre, descripcion, precio_unitario, precio_mayorista, proveedor, unidad_medida, impuesto, id_usuario  } = req.body;
 
     try {
         const id_empresa_param = await getEmpresaId(id_usuario, supabase);
 
-        const existencia = await existenciProductCode('producto', 'codigo_producto', codigo, id_empresa_param, supabase);
+        const existencia = await existenciProductCode('producto', 'codigo_producto', codigo_producto, id_empresa_param, supabase);
         if (existencia){
             throw 'Codigo de producto en uso';
         }
@@ -44,12 +44,14 @@ const postProducto = async (req, res) => {
             id_empresa: id_empresa_param,
             precio_unitario: precio_unitario,
             precio_mayorista: precio_mayorista,
-            codigo_producto: codigo
+            codigo_producto: codigo_producto
         }).select('*');
 
         if(error){
             throw 'Ocurrio un error al guardar producto';
         }
+
+        producto[0].stock_actual = 0;
 
         res.status(200).json(producto);
     } catch (error) {
@@ -59,4 +61,43 @@ const postProducto = async (req, res) => {
 
 }
 
-module.exports = { getProductosOfInventory, postProducto }
+const patchProducto = async (req, res) => {
+    const supabase = req.supabase;
+    const { codigo_producto, nombre, descripcion, precio_unitario, precio_mayorista, proveedor, unidad_medida, impuesto, id_usuario  } = req.body;
+
+    try {
+        const id_empresa_param = await getEmpresaId(id_usuario, supabase);
+
+        const existencia = await existenciProductCode('producto', 'codigo_producto', codigo_producto, id_empresa_param, supabase);
+        if (existencia){
+            throw 'Codigo de producto en uso';
+        }
+
+        const { data: producto, error } = await supabase.from('producto')
+        .update({
+            nombre: nombre,
+            id_unidad_medida: unidad_medida,
+            impuesto: impuesto,
+            id_proveedor: proveedor,
+            descripcion: descripcion,
+            id_empresa: id_empresa_param,
+            precio_unitario: precio_unitario,
+            precio_mayorista: precio_mayorista,
+            codigo_producto: codigo_producto
+        }).select('*');
+
+        if(error){
+            throw 'Ocurrio un error al guardar producto';
+        }
+
+        producto[0].stock_actual = 0;
+
+        res.status(200).json(producto);
+    } catch (error) {
+        console.log(error);
+        res.status(500).json(error);
+    }
+
+}
+
+module.exports = { getProductosOfInventory, postProducto, patchProducto }

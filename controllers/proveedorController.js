@@ -41,7 +41,7 @@ const getProveedoresbyUsuario = async (req, res) => {
     if(error){
         return res.status(500);
     }
-    console.log(proveedoresActivos);
+
     res.status(200).json(proveedoresActivos);
    } catch (error) {
     

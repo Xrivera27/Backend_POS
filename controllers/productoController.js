@@ -111,5 +111,28 @@ const patchProducto = async (req, res) => {
     }
 }
 
+const desactivarProducto = async (req, res) => {
+    const supabase = req.supabase;
+    const id_producto = req.params.id_producto;
+    const { estado } = req.body;
 
-module.exports = { getProductosOfInventory, postProducto, patchProducto }
+    try {
+        const {data, error } = await supabase.from('producto')
+        .update({
+            estado: estado
+        }).eq('id_producto', id_producto);
+
+        if (error){
+            console.log(error);
+            throw 'Error al eliminar producto';
+        }
+
+        res.status(200).json(data);
+
+    } catch (error) {
+        res.status(500).json({ message: "Error al desactivar producto", error: error.message });
+    }
+}
+
+
+module.exports = { getProductosOfInventory, postProducto, patchProducto, desactivarProducto }

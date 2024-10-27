@@ -6,7 +6,7 @@ const { getProductosOfInventory, postProducto, patchProducto } = require('../con
 
 router.get('/:id_usuario', getProductosOfInventory);
 router.post('/crear', postProducto);
-router.patch('/actualizar', patchProducto);
+router.patch('/actualizar/:id_producto', patchProducto);
 // router.delete('/:id', sucursaleController.deleteSucursal);
 
 module.exports = router;

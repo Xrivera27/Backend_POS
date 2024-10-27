@@ -70,14 +70,14 @@ const patchProducto = async (req, res) => {
 
     const id_empresa_param = await getEmpresaId(id_usuario, supabase); 
     const updatedFields = {};
-    if (nombre) updatedFields.nombre = nombre;
-    if (unidad_medida) updatedFields.id_unidad_medida = unidad_medida;
+    if (nombre || nombre != '') updatedFields.nombre = nombre;
+    if (unidad_medida || unidad_medida !== '') updatedFields.id_unidad_medida = unidad_medida;
     if (impuesto !== undefined || impuesto != 0) updatedFields.impuesto = impuesto;
     if (proveedor) updatedFields.id_proveedor = proveedor;
-    if (descripcion) updatedFields.descripcion = descripcion;
+    if (descripcion || descripcion !== '') updatedFields.descripcion = descripcion;
     if (precio_unitario !== undefined) updatedFields.precio_unitario = precio_unitario;
     if (precio_mayorista !== undefined) updatedFields.precio_mayorista = precio_mayorista;
-    if (codigo_producto) updatedFields.codigo_producto = codigo_producto;// Asegúrate de tener este dato
+    if (codigo_producto || codigo_producto !== '') updatedFields.codigo_producto = codigo_producto;// Asegúrate de tener este dato
 
     // Evitar operación si no hay campos actualizables
     if (Object.keys(updatedFields).length === 0) {

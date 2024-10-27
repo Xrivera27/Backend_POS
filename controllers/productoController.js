@@ -22,6 +22,32 @@ const getProductosOfInventory = async (req, res) => {
     }
 }
 
+const getExtraInfoProduct = async (req, res) => {
+    const supabase = req.supabase;
+    const id_producto  = req.params.id_producto;
+
+    try {
+        const { data: info, error } = await supabase.from('producto')
+        .select('precio_mayorista, impuesto, id_unidad_medida, id_proveedor')
+        .eq('id_producto', id_producto);
+
+        if (!info || info.length === 0) {
+            return res.status(404).json({ message: "Producto no encontrado" });
+        }
+
+        if (error){
+            throw 'Ocurrio un error al ejecutar consulta';
+        }
+
+        res.status(200).json(info[0]);
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: "Error al obtener info de producto", error: error.message });
+    }
+
+}
+
 const postProducto = async (req, res) => {
     const supabase = req.supabase;
     const { codigo_producto, nombre, descripcion, precio_unitario, precio_mayorista, proveedor, unidad_medida, impuesto, id_usuario  } = req.body;
@@ -135,4 +161,4 @@ const desactivarProducto = async (req, res) => {
 }
 
 
-module.exports = { getProductosOfInventory, postProducto, patchProducto, desactivarProducto }
+module.exports = { getProductosOfInventory, postProducto, patchProducto, desactivarProducto, getExtraInfoProduct }

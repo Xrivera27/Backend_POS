@@ -22,6 +22,29 @@ const getProductosOfInventory = async (req, res) => {
     }
 }
 
+const getProductosOfInventorySucursal = async (req, res) => {
+    const supabase = req.supabase;
+    const id_sucursal_param = req.params.id_sucursal;
+
+    try {
+
+        const {data: productos, error} = await supabase.rpc('view_inventory_only_sucursal', {id_sucursal_param})
+        .select('*');
+
+        if (error){
+            throw 'Ocurrio un error al obtener productos.'
+        }
+
+        res.status(200).json(productos);
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json(error);
+    }
+}
+
+
+
 const getExtraInfoProduct = async (req, res) => {
     const supabase = req.supabase;
     const id_producto  = req.params.id_producto;
@@ -161,4 +184,4 @@ const desactivarProducto = async (req, res) => {
 }
 
 
-module.exports = { getProductosOfInventory, postProducto, patchProducto, desactivarProducto, getExtraInfoProduct }
+module.exports = { getProductosOfInventory, getProductosOfInventorySucursal, postProducto, patchProducto, desactivarProducto, getExtraInfoProduct }

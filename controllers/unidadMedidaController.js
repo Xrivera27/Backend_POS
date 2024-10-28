@@ -40,18 +40,43 @@ const getUnidadbyUsuario = async (req, res) => {
    }
 }
 
+const getTotalUnidadporProducto = async (req, res) => {
+    const supabase = req.supabase;
+  
+    try {
+      const id_unidad = req.params.id_unidad;
+  
+      const { count, error } = await supabase
+        .from('producto')
+        .select('*', { count: "exact", head: true }) // head: true para que solo cuente y no traiga datos
+        .eq('id_unidad_medida', id_unidad);
+  
+      if (error) {
+        console.log(error);
+        return res.status(500).json({ error: 'Error al obtener el conteo' });
+      }
+  
+      res.status(200).json({ total: count });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  }
+  
 
 const postUnidad = async (req, res) => {
     const supabase = req.supabase;
     const { medida, id_usuario } = req.body;
 
     try {
+       
         const id_empresa = await getEmpresaId(id_usuario, supabase);
+
         const { data: unidad, error } = await supabase.from('unidad_de_medida').insert(
             {
             medida: medida,
             id_empresa: id_empresa,
-        }).select('*');
+        }).select('id_medida, medida');
 
         if(error) {
 
@@ -88,4 +113,4 @@ const patchUnidad = async (req, res) => {
     }
 }
 
-module.exports = { getUnidad, getUnidadbyUsuario, patchUnidad, postUnidad }
+module.exports = { getUnidad, getUnidadbyUsuario, patchUnidad, postUnidad, getTotalUnidadporProducto }

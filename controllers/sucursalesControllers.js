@@ -39,6 +39,30 @@ const getSucursalesbyUsuario = async (req, res) => {
     }
 }
 
+const getSucursalesbyUsuarioSummary = async (req, res) => {
+    const supabase = req.supabase;
+    const id_usuario = req.params.id_usuario
+
+    try {
+        const id_empresa = await getEmpresaId(id_usuario, supabase);
+
+        const { data: sucursales, error } = await supabase
+        .from('Sucursales')
+        .select('id_sucursal, nombre_administrativo')
+        .eq('id_empresa', id_empresa)
+        .eq('estado', true);
+
+        if (error){
+            throw `Ha ocurrido un error: ${error}`;
+        }
+
+        res.status(200).json(sucursales);
+
+    } catch (error) {
+        res.status(500).json({ Error: 'Ocurrio un error al obtener Sucursales' + error.message });
+    }
+}
+
 const patchSucursal = async (req, res) => {
     const supabase = req.supabase;
     const { nombre_administrativo, correo, direccion, telefono } = req.body;
@@ -144,4 +168,4 @@ const desactivarSucursal = async (req, res) => {
     }
 }
 
-module.exports = { getSucursales, getSucursalesbyUsuario, patchSucursal, postSucursal, desactivarSucursal }
+module.exports = { getSucursales, getSucursalesbyUsuario, getSucursalesbyUsuarioSummary,patchSucursal, postSucursal, desactivarSucursal }

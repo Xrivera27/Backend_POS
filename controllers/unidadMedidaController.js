@@ -40,6 +40,28 @@ const getUnidadbyUsuario = async (req, res) => {
    }
 }
 
+const getProductosUnidad = async (req, res) => {
+    const supabase = req.supabase;
+    const id_unidad = req.params.id_unidad;
+  
+    try {
+        const { data: productos, error } = await supabase
+        .from('producto')
+        .select('codigo_producto, nombre')
+        .eq('id_unidad_medida', id_unidad);
+  
+      if (error) {
+        console.log(error);
+        return res.status(500).json({ error: 'Error al obtener los productos' });
+      }
+  
+      res.status(200).json(productos);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  }
+
 const getTotalUnidadporProducto = async (req, res) => {
     const supabase = req.supabase;
   
@@ -113,4 +135,6 @@ const patchUnidad = async (req, res) => {
     }
 }
 
-module.exports = { getUnidad, getUnidadbyUsuario, patchUnidad, postUnidad, getTotalUnidadporProducto }
+module.exports = { 
+    getUnidad, getUnidadbyUsuario, patchUnidad, postUnidad, getTotalUnidadporProducto, getProductosUnidad
+ }

@@ -105,6 +105,8 @@ const postUnidad = async (req, res) => {
          return res.status(500).json({error: error.message});
         }
 
+        unidad[0].totalProductos = 0;
+
         res.status(200).json(unidad);
 
     } catch (error) {
@@ -135,6 +137,31 @@ const patchUnidad = async (req, res) => {
     }
 }
 
+const deleteUnidad = async (req, res) => {
+  const supabase = req.supabase;
+  const id_unidad = req.params.id_unidad;
+
+  try {
+    const { data, error } = await supabase
+    .from('unidad_de_medida')
+    .delete()
+    .eq('id_medida', id_unidad);
+
+    if (error){
+      throw new Error(`Error al borrar registro: ${error.message}`);
+    }
+
+    res.status(200).json({ 'Registro eliminado': data  })
+
+  } catch (error) {
+
+    console.log(error);
+
+    res.status(500).json({error: error.message  })
+  }
+
+}
+
 module.exports = { 
-    getUnidad, getUnidadbyUsuario, patchUnidad, postUnidad, getTotalUnidadporProducto, getProductosUnidad
+    getUnidad, getUnidadbyUsuario, patchUnidad, postUnidad, getTotalUnidadporProducto, getProductosUnidad, deleteUnidad
  }

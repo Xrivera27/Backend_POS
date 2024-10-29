@@ -50,7 +50,10 @@ const getUsuarioOfEmpresa = async (req, res) => {
 
       // Verificamos si se encontró el usuario
 
-      const filtroUsers = usuarios.filter( usuario => usuario.id_rol != 4 ).filter( usuario => usuario.estado == true );
+      const filtroUsers = usuarios
+      .filter(usuario => usuario.id_usuario !=  id_usuario)
+      .filter( usuario => usuario.id_rol != 4 )
+      .filter( usuario => usuario.estado == true );
 
       for (const usuario of filtroUsers){
         usuario.sucursales= await getSucursalesbyUser(usuario.id_usuario, supabase);

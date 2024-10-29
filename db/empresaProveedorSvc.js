@@ -39,9 +39,7 @@ try {
     
 } catch (error) {
     throw error;
-}
-
-    
+}   
 }
 
 const deleteRelacion = async (id, supabase) => {

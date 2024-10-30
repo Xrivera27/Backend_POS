@@ -48,8 +48,7 @@ const existeIdinTable = async (id, id_table, tabla, supabase) => {
     } catch (error) {
         return error.message; // Retorna solo el mensaje del error
     }
-};
-
+}
 
 module.exports = { existenciProductCode, existeIdinTable }
 

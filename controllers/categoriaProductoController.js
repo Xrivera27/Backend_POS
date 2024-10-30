@@ -1,4 +1,5 @@
 const { getEmpresaId } = require('../db/empresaSvc.js');
+const { conteoProdinCat } = require('../db/catProdSvs.js');
 
 const getCategoriaProducto = async (req, res) => {
     const supabase = req.supabase;
@@ -35,12 +36,33 @@ const getCategoriaProductoOfEmpresa = async (req, res) => {
             res.status(500).json({ Error: 'Error al obtener categorias' + error.message });
         }
 
+        for ( const elemento of data){
+            elemento.totalProd = await conteoProdinCat(elemento.id_categoria, supabase);
+        }
+
         res.status(200).json(data);
 
     } catch (error) {
         res.status(500).json({ Error: 'Ocurrio un error al obtener categorias' + error.message });
     }
 }
+
+const getTotalCatProd = async (req, res) => {
+    const supabase = req.supabase;
+    const id_categoria_producto = req.params.id_categoria_producto;
+    let conteo;
+   try {
+    conteo = await conteoProdinCat(id_categoria_producto, supabase);
+
+    res.status(200).json({ total: conteo });
+
+   } catch (error) {
+
+    console.log(error);
+    res.status(500).json({ error: conteo });
+
+   }
+  }
 
 const postCategoria = async (req, res) => {
     const supabase = req.supabase;
@@ -61,6 +83,8 @@ const postCategoria = async (req, res) => {
 
             throw error;
         }
+
+        categorias[0].totalProd = 0;
 
         res.status(200).json(categorias);
 
@@ -146,6 +170,11 @@ const eliminarCategoria = async (req, res) => {
 
     try {
         const id_categoria = req.params.id_categoria;
+        conteo = await conteoProdinCat(id_categoria, supabase);
+
+        if (conteo > 0){
+            throw new Error('Todavia hay productos usando esta categoria!');
+        }
 
         const { data: categorias, error } = await supabase
             .from('categoria_producto')
@@ -181,5 +210,6 @@ module.exports = {
     postCategoria, 
     patchCategoria, 
     desactivarCategoria, 
-    eliminarCategoria
+    eliminarCategoria,
+    getTotalCatProd
 }

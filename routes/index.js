@@ -22,6 +22,7 @@ const configureempresaRoutes = require('./updateempresaRoutes');
 const sarRoutes = require('./sarRoutes');
 const updatesarRoutes = require('./updatesarRoutes');
 const productosRoutes = require('./productosRoutes.js');
+const clientesRoutes = require('./clientesRoutes');
 
 
 
@@ -38,7 +39,7 @@ router.use('/usuarios', usuarioRoutes);
 router.use('/configuser', configuserRoutes);
 router.use('/configempresa', configempresaRoutes);
 router.use('/updateempresa', configureempresaRoutes);
-
+router.use('/clientes', clientesRoutes);
 
 router.use('/categoria-producto', categoriProductoRouter);
 router.use('/usuario', usuarioRouter);

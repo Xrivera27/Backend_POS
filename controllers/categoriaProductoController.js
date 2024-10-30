@@ -173,4 +173,13 @@ const eliminarCategoria = async (req, res) => {
 }
 
 
-module.exports = {getCategoriaProducto, getCategoriaProductoOfEmpresa, postCategoria, patchCategoria, desactivarCategoria, eliminarCategoria}
+
+
+module.exports = {
+    getCategoriaProducto, 
+    getCategoriaProductoOfEmpresa, 
+    postCategoria, 
+    patchCategoria, 
+    desactivarCategoria, 
+    eliminarCategoria
+}

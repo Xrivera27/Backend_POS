@@ -28,6 +28,29 @@ const existenciProductCode = async (tabla, campo, atributo, id_empresa, supabase
     }
 }
 
-module.exports = { existenciProductCode }
+const existeIdinTable = async (id, id_table, tabla, supabase) => {
+    try {
+        const { data, error } = await supabase
+            .from(tabla)
+            .select('*')
+            .eq(id_table, id);
+
+        if (error) {
+            throw new Error('Error al consultar la base de datos');
+        }
+
+        if (!data || data.length === 0) {
+            throw new Error('No se encontraron registros.');
+        }
+
+        // Si el registro existe, devuelve true
+        return true;
+    } catch (error) {
+        return error.message; // Retorna solo el mensaje del error
+    }
+};
+
+
+module.exports = { existenciProductCode, existeIdinTable }
 
 

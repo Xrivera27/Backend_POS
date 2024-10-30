@@ -1,5 +1,6 @@
 const { getEmpresaId } = require('../db/empresaSvc.js');
 const { existenciProductCode } = require('../db/validaciones.js');
+const { catProdAdd } = require('../db/catProdSvs.js');
 
 const getProductosOfInventory = async (req, res) => {
     const supabase = req.supabase;
@@ -73,7 +74,17 @@ const getExtraInfoProduct = async (req, res) => {
 
 const postProducto = async (req, res) => {
     const supabase = req.supabase;
-    const { codigo_producto, nombre, descripcion, precio_unitario, precio_mayorista, proveedor, unidad_medida, impuesto, id_usuario  } = req.body;
+    const { codigo_producto, 
+            nombre, 
+            descripcion, 
+            precio_unitario, 
+            precio_mayorista, 
+            proveedor, 
+            unidad_medida, 
+            impuesto, 
+            id_usuario,
+            categorias  
+        } = req.body;
 
     try {
         const id_empresa_param = await getEmpresaId(id_usuario, supabase);
@@ -99,6 +110,12 @@ const postProducto = async (req, res) => {
         if(error){
             throw 'Ocurrio un error al guardar producto';
         }
+    
+       const asignarCat =  await catProdAdd(categorias, producto[0].id_producto, supabase);
+
+       if (asignarCat != true){
+        console.log(asignarCat);
+       }
 
         producto[0].stock_actual = 0;
 

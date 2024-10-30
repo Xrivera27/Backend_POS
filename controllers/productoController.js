@@ -1,6 +1,6 @@
 const { getEmpresaId } = require('../db/empresaSvc.js');
 const { existenciProductCode } = require('../db/validaciones.js');
-const { catProdAdd } = require('../db/catProdSvs.js');
+const { catProdAdd, catProdGet, deleteCatProd } = require('../db/catProdSvs.js');
 
 const getProductosOfInventory = async (req, res) => {
     const supabase = req.supabase;
@@ -51,6 +51,8 @@ const getExtraInfoProduct = async (req, res) => {
     const id_producto  = req.params.id_producto;
 
     try {
+        const arrayIdCategorias = await catProdGet(id_producto, supabase);
+
         const { data: info, error } = await supabase.from('producto')
         .select('precio_mayorista, impuesto, id_unidad_medida, id_proveedor')
         .eq('id_producto', id_producto);
@@ -62,6 +64,8 @@ const getExtraInfoProduct = async (req, res) => {
         if (error){
             throw 'Ocurrio un error al ejecutar consulta';
         }
+
+        info[0].categorias = arrayIdCategorias;
 
         res.status(200).json(info[0]);
 
@@ -129,12 +133,20 @@ const postProducto = async (req, res) => {
 
 const patchProducto = async (req, res) => {
     const supabase = req.supabase;
-    const { codigo_producto, nombre, descripcion, precio_unitario, precio_mayorista, proveedor, unidad_medida, impuesto, id_usuario } = req.body;
+    const { 
+        codigo_producto, 
+        nombre, 
+        descripcion, 
+        precio_unitario, 
+        precio_mayorista, 
+        proveedor, 
+        unidad_medida, 
+        impuesto, 
+        id_usuario,
+        categorias
+    } = req.body;
     const id_producto = req.params.id_producto;
 
-    // Crear un objeto de actualización solo con los campos proporcionados
-
-    const id_empresa_param = await getEmpresaId(id_usuario, supabase); 
     const updatedFields = {};
     if (nombre || nombre != '') updatedFields.nombre = nombre;
     if (unidad_medida || unidad_medida !== '') updatedFields.id_unidad_medida = unidad_medida;
@@ -151,6 +163,12 @@ const patchProducto = async (req, res) => {
     }
 
     try {
+        const id_empresa_param = await getEmpresaId(id_usuario, supabase); 
+        let preCat = await catProdGet(id_producto, supabase);
+
+        const arrayEliminar = preCat.filter(elemento => !categorias.includes(elemento));
+        const arrayAgregar = categorias.filter(elemento => !preCat.includes(elemento));
+
         // Verificar si el código de producto ya está en uso, si ha sido proporcionado
         if (codigo_producto) {
             const existencia = await existenciProductCode('producto', 'codigo_producto', codigo_producto, id_empresa_param, supabase);
@@ -159,7 +177,6 @@ const patchProducto = async (req, res) => {
             }
         }
 
-        // Realizar actualización en Supabase solo con los campos modificados
         const { data: producto, error } = await supabase.from('producto')
             .update(updatedFields)
             .eq('id_producto', id_producto)
@@ -167,6 +184,13 @@ const patchProducto = async (req, res) => {
 
         if (error) {
             throw new Error(`Error al actualizar producto: ${error.message}`);
+        }
+
+        const asignarCat =  await catProdAdd(arrayAgregar, id_producto, supabase);
+        const eliminarCat = await deleteCatProd(arrayEliminar, id_producto, supabase );
+
+        if ( asignarCat === true && eliminarCat === true){
+            console.log('Relaciones actualizadas');
         }
 
         res.status(200).json(producto);

@@ -114,12 +114,16 @@ const postProducto = async (req, res) => {
         if(error){
             throw 'Ocurrio un error al guardar producto';
         }
-    
-       const asignarCat =  await catProdAdd(categorias, producto[0].id_producto, supabase);
 
-       if (asignarCat != true){
-        console.log(asignarCat);
-       }
+        if (categorias || categorias != [] || categorias.length > 0){
+            const asignarCat =  await catProdAdd(categorias, producto[0].id_producto, supabase);
+
+            if (asignarCat != true){
+             console.log(asignarCat);
+            }
+        }
+    
+       
 
         producto[0].stock_actual = 0;
 
@@ -164,10 +168,6 @@ const patchProducto = async (req, res) => {
 
     try {
         const id_empresa_param = await getEmpresaId(id_usuario, supabase); 
-        let preCat = await catProdGet(id_producto, supabase);
-
-        const arrayEliminar = preCat.filter(elemento => !categorias.includes(elemento));
-        const arrayAgregar = categorias.filter(elemento => !preCat.includes(elemento));
 
         // Verificar si el código de producto ya está en uso, si ha sido proporcionado
         if (codigo_producto) {
@@ -186,12 +186,22 @@ const patchProducto = async (req, res) => {
             throw new Error(`Error al actualizar producto: ${error.message}`);
         }
 
-        const asignarCat =  await catProdAdd(arrayAgregar, id_producto, supabase);
-        const eliminarCat = await deleteCatProd(arrayEliminar, id_producto, supabase );
+        if ( categorias !== undefined){
 
-        if ( asignarCat === true && eliminarCat === true){
-            console.log('Relaciones actualizadas');
+            let preCat = await catProdGet(id_producto, supabase);
+
+            const arrayEliminar = preCat.filter(elemento => !categorias.includes(elemento));
+            const arrayAgregar = categorias.filter(elemento => !preCat.includes(elemento));
+
+            const asignarCat =  await catProdAdd(arrayAgregar, id_producto, supabase);
+            const eliminarCat = await deleteCatProd(arrayEliminar, id_producto, supabase );
+    
+            if ( asignarCat === true && eliminarCat === true){
+                console.log('Relaciones actualizadas');
+            }
         }
+
+      
 
         res.status(200).json(producto);
 

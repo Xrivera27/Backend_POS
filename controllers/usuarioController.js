@@ -42,13 +42,9 @@ const getUsuarioOfEmpresa = async (req, res) => {
     try {
       const { data: usuarios, error } = await supabase.rpc('get_usuariosbyidusuario', { id_empresa_param });
 
-     
-
       if (error) {
         throw new Error('Ocurrió un error en la consulta: ' + error.message);
       }
-
-      // Verificamos si se encontró el usuario
 
       const filtroUsers = usuarios
       .filter(usuario => usuario.id_usuario !=  id_usuario)

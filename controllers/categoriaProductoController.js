@@ -201,9 +201,6 @@ const eliminarCategoria = async (req, res) => {
     }
 }
 
-
-
-
 module.exports = {
     getCategoriaProducto, 
     getCategoriaProductoOfEmpresa, 

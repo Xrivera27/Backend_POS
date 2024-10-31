@@ -30,7 +30,8 @@ const getClientesByUsuario = async (req, res) => {
         const { data: clientes, error } = await supabase
             .from('Clientes')
             .select('*')
-            .eq('id_empresa', id_empresa);  // Filtrar por el ID de la empresa
+            .eq('id_empresa', id_empresa)
+            .eq('estado', true);  // Filtrar por el ID de la empresa
 
         if (error) {
             return res.status(500).json({ Error: 'Error al obtener Clientes por Usuario: ' + error.message });
@@ -66,13 +67,6 @@ const postCliente = async (req, res) => {
             return res.status(500).json({ Error: 'Error al crear Cliente: ' + error.message });
         }
 
-        const nuevaRelacion = await insertarRelacion(id_empresa, cliente[0].id, supabase);
-
-        if (nuevaRelacion !== true) {
-            await deleteCliente(cliente[0].id, supabase);
-            return res.status(500).json({ Error: nuevaRelacion.message });
-        }
-
         res.status(200).json(cliente);
     } catch (error) {
         res.status(500).json({ Error: 'Ocurrió un error al crear Cliente: ' + error.message });
@@ -81,21 +75,10 @@ const postCliente = async (req, res) => {
 
 const patchCliente = async (req, res) => {
     const supabase = req.supabase;
-    const { nombre_completo, correo, direccion, telefono, rtn, id_usuario } = req.body;
+    const { nombre_completo, correo, direccion, telefono, rtn } = req.body;
 
     try {
-        // Buscar el cliente asociado al id_usuario
-        const { data: clienteData, error: clienteError } = await supabase
-            .from('Clientes')
-            .select('id_cliente')
-            .eq('id_empresa', id_empresa)
-            .single();
-
-        if (clienteError || !clienteData) {
-            return res.status(404).json({ Error: 'Cliente no encontrado para este usuario' });
-        }
-
-        const id_cliente = clienteData.id_cliente;
+        const id_cliente = req.params.id_cliente;
 
         // Actualizar el cliente usando el id_cliente obtenido
         const { data, error } = await supabase
@@ -117,7 +100,30 @@ const patchCliente = async (req, res) => {
     } catch (error) {
         res.status(500).json({ Error: 'Ocurrió un error al actualizar Cliente: ' + error.message });
     }
-};
+}
+
+const desactivarCliente = async (req, res) => {
+    const supabase = req.supabase;
+    const { estado } = req.body;
+    const id_cliente = req.params.id_cliente;
+
+    try {
+        const { data, error } = await supabase.from('Clientes').update(
+            {
+             estado: estado
+        }).eq('id_cliente', id_cliente);
+
+        if(error) {
+         return res.status(500).json({error: error.message});
+        }
+
+        res.status(200).json(data);
+
+    } catch (error) {
+        console.log('ha habido un error en la api');
+        res.status(500).json({error: error.message});
+    }
+}
 
 
 
@@ -144,5 +150,6 @@ module.exports = {
     getClientesByUsuario,
     postCliente,
     patchCliente,
+    desactivarCliente,
     deleteCliente
 };

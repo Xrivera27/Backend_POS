@@ -1,62 +1,67 @@
 const express = require('express');
 const router = express.Router();
 
-//crear las variables de las rutas
-const registerRoutes = require('./empresaRoutes');
-const loginRoutes = require('./loginRoutes');
-const categoriaRoutes = require('./categoriaRoutes');
-const recuperarRoutes = require('./recuperarRouter');
-const perfilRoutes = require('./perfilRoutes');
-const sucursaleRoutes = require('./sucursaleRoutes');
-const usuarioRoutes = require('./usuarioRoutes');
-const configuserRoutes = require('./configuserRoutes');
-const categoriProductoRouter = require('./categoriaProutes.js');
-const usuarioRouter = require('./usuarioRoutes.js');
+//logins
 const sesionRouter = require('./sesionRoutes.js');
-const sucursalRouter = require('./sucursalRouters.js');
-const proveedorRouter = require('./proveedorRoutes.js');
-const rolRouter = require('./rolRouter.js')
-const unidadMedidaRouter = require('./unidadMedidaRoutes.js')
-const configempresaRoutes = require('./configempresaRoutes');
-const configureempresaRoutes = require('./updateempresaRoutes');
+const loginRoutes = require('./loginRoutes');
+const registerRoutes = require('./empresaRoutes');
+const perfilRoutes = require('./perfilRoutes');
+const recuperarRoutes = require('./recuperarRouter');
+
+//configuraciones
+const configuserRoutes = require('./configuserRoutes');
 const sarRoutes = require('./sarRoutes');
 const updatesarRoutes = require('./updatesarRoutes');
-const productosRoutes = require('./productosRoutes.js');
+const configureempresaRoutes = require('./updateempresaRoutes');
+
+//empresas rutas
+const categoriaRoutes = require('./categoriaRoutes');
+const configempresaRoutes = require('./configempresaRoutes');
+const usuarioRoutes = require('./usuarioRoutes');
+const rolRouter = require('./rolRouter.js');
+
+//cruds
 const clientesRoutes = require('./clientesRoutes');
+const proveedorRouter = require('./proveedorRoutes.js');
+const usuarioRouter = require('./usuarioRoutes.js');
 
+//sucursales y productos
+const sucursalRouter = require('./sucursalRouters.js');
+const sucursaleRoutes = require('./sucursaleRoutes');
+const productosRoutes = require('./productosRoutes.js');
+const unidadMedidaRouter = require('./unidadMedidaRoutes.js')
+const categoriProductoRouter = require('./categoriaProutes.js');
 
-
-
-// Usar las rutas web
-
-router.use('/empresa', registerRoutes);
+//logins
 router.use('/login', loginRoutes);
-router.use('/categoria', categoriaRoutes);
-router.use('/recuperar', recuperarRoutes);
 router.use('/perfil', perfilRoutes);
-router.use('/sucursales', sucursaleRoutes);
-router.use('/usuarios', usuarioRoutes);
+router.use('/recuperar', recuperarRoutes);
+router.use('/sesion-user', sesionRouter);
+router.use('/roles', rolRouter);
+
+//configuraciones
 router.use('/configuser', configuserRoutes);
 router.use('/configempresa', configempresaRoutes);
 router.use('/updateempresa', configureempresaRoutes);
-router.use('/clientes', clientesRoutes);
-
-router.use('/categoria-producto', categoriProductoRouter);
-router.use('/usuario', usuarioRouter);
-router.use('/sesion-user', sesionRouter);
-router.use('/sucursales', sucursalRouter);
-router.use('/proveedores', proveedorRouter);
-router.use('/roles', rolRouter);
-router.use('/unidad-medida', unidadMedidaRouter);
-
-
-
-router.use('/productos', productosRoutes);
-
-router.use('/sar', sarRoutes);
 router.use('/updsar', updatesarRoutes);
 
+//empresas rutas
+router.use('/sar', sarRoutes);
+router.use('/empresa', registerRoutes);
+router.use('/categoria', categoriaRoutes);
+
+//cruds
+router.use('/clientes', clientesRoutes);
+router.use('/proveedores', proveedorRouter);
+router.use('/usuarios', usuarioRoutes);
+router.use('/usuario', usuarioRouter);
 
 
+//sucursales y productos
+router.use('/categoria-producto', categoriProductoRouter);
+router.use('/sucursales', sucursaleRoutes);
+router.use('/sucursales', sucursalRouter);
+router.use('/productos', productosRoutes);
+router.use('/unidad-medida', unidadMedidaRouter);
 
 module.exports = router;

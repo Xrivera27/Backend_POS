@@ -31,6 +31,7 @@ const sucursaleRoutes = require('./sucursaleRoutes');
 const productosRoutes = require('./productosRoutes.js');
 const unidadMedidaRouter = require('./unidadMedidaRoutes.js')
 const categoriProductoRouter = require('./categoriaProutes.js');
+const inventarioRouter = require('./inventariosRoutes.js');
 
 //logins
 router.use('/login', loginRoutes);
@@ -62,6 +63,7 @@ router.use('/categoria-producto', categoriProductoRouter);
 router.use('/sucursales', sucursaleRoutes);
 router.use('/sucursales', sucursalRouter);
 router.use('/productos', productosRoutes);
+router.use('/inventario', inventarioRouter);
 router.use('/unidad-medida', unidadMedidaRouter);
 
 module.exports = router;

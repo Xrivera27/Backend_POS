@@ -13,7 +13,7 @@ const getProductosOfInventory = async (req, res) => {
         .select('*');
 
         if (error){
-            throw 'Ocurrio un error al obtener productos.'
+            throw 'Ocurrio un error al obtener productos.' + error;
         }
 
         res.status(200).json(productos);

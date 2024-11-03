@@ -3,7 +3,6 @@ let currentUsername = null; // Variable para almacenar el username actual
 // Función para establecer el username actual
 const setCurrentUsername = (username) => {
   currentUsername = username; // Guarda el username actual
-  console.log(currentUsername);
 };
 
 // Función para obtener el username actual

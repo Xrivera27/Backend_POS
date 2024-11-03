@@ -1,5 +1,6 @@
-const { insertarRelacion } = require('../db/sucursalUsuarioSvc.js');
+const { insertarRelacion, getSucursalesbyUser } = require('../db/sucursalUsuarioSvc.js');
 const { getEmpresaId } = require('../db/empresaSvc.js');
+const { getRolByUsuario } = require('../db/validaciones.js');
 
 const getSucursales = async (req, res) => {
     const supabase = req.supabase;
@@ -44,22 +45,42 @@ const getSucursalesbyUsuarioSummary = async (req, res) => {
     const id_usuario = req.params.id_usuario
 
     try {
-        const id_empresa = await getEmpresaId(id_usuario, supabase);
 
-        const { data: sucursales, error } = await supabase
-        .from('Sucursales')
-        .select('id_sucursal, nombre_administrativo')
-        .eq('id_empresa', id_empresa)
-        .eq('estado', true);
+        const id_rol_usuario = await getRolByUsuario(id_usuario, supabase);
 
-        if (error){
-            throw `Ha ocurrido un error: ${error}`;
+        if ( id_rol_usuario === 4){
+            const id_empresa = await getEmpresaId(id_usuario, supabase);
+
+            const { data: sucursales, error } = await supabase
+            .from('Sucursales')
+            .select('id_sucursal, nombre_administrativo')
+            .eq('id_empresa', id_empresa)
+            .eq('estado', true);
+    
+            if (error){
+                throw `Ha ocurrido un error: ${error}`;
+            }
+    
+            res.status(200).json(sucursales);
         }
 
-        res.status(200).json(sucursales);
+        else {
+            const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+            const { data: sucursales, error } = await supabase
+            .from('Sucursales')
+            .select('id_sucursal, nombre_administrativo')
+            .eq('id_sucursal', id_sucursal)
+            .eq('estado', true)
 
+            if (error){
+                throw `Ha ocurrido un error: ${error}`;
+            }
+            console.log(sucursales);
+            res.status(200).json(sucursales);
+        }
+        
     } catch (error) {
-        res.status(500).json({ Error: 'Ocurrio un error al obtener Sucursales' + error.message });
+        res.status(500).json({ Error: 'Ocurrio un error al obtener Sucursales ' + error });
     }
 }
 

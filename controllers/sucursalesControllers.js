@@ -23,9 +23,12 @@ const getSucursales = async (req, res) => {
 
 const getSucursalesbyUsuario = async (req, res) => {
     const supabase = req.supabase;
+    const id_usuario_param = req.params.id_usuario;
 
     try {
-        const id_usuario_param = req.params.id_usuario;
+        
+        console.log(id_usuario_param);
+        
         const { data: sucursal, error } = await supabase.rpc('obtener_sucursal', {id_usuario_param})
         
 

@@ -216,7 +216,7 @@ const getDatosSAR = async (id_sucursal, supabase) => {
            throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
         }
 
-       const {exitos, totalFactura} = await calcularDetallesVenta(venta[0].id_venta, productos, supabase);
+       const {exitos, factura} = await calcularDetallesVenta(venta[0].id_venta, productos, supabase);
 
        if (exitos != productos.length){
         throw 'Alguno productos no fueron agregados';
@@ -224,7 +224,7 @@ const getDatosSAR = async (id_sucursal, supabase) => {
 
         res.status(200).json({ 
             id_venta: venta[0].id_venta,
-            totalPagar: totalFactura });
+            factura: factura });
    
      } catch (error) {
         res.status(500).json({
@@ -312,8 +312,8 @@ const getDatosSAR = async (id_sucursal, supabase) => {
             throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
         }
 
-       const totalFactura =  await postFactura(id_venta, productos, supabase);
-        return {exitos, totalFactura};
+       const factura =  await postFactura(id_venta, productos, supabase);
+        return {exitos, factura};
 
     } catch (error) {
         console.error('Error en el proceso:', error);
@@ -375,14 +375,16 @@ const getDatosSAR = async (id_sucursal, supabase) => {
             ISV_18: impuestos.ISV_18,
             total_ISV: impuestos.total_impuesto,
             total: subtotalTabla + impuestos.total_impuesto
-        }).select('total');
+        }).select('total_extento, gravado_15, gravado_18, total');
 
         if(error){
             console.error('Error al insertar factura:', error.message);
             throw new Error('Ocurrió un error al registrar factura.');
          }
 
-         return factura[0].total;
+
+         factura[0].sub_total = subtotalTabla;
+         return factura[0];
 
     } catch (error) {
         console.error('Error en el proceso:', error);

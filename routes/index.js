@@ -32,6 +32,8 @@ const productosRoutes = require('./productosRoutes.js');
 const unidadMedidaRouter = require('./unidadMedidaRoutes.js')
 const categoriProductoRouter = require('./categoriaProutes.js');
 const inventarioRouter = require('./inventariosRoutes.js');
+const ClienteReporte = require('./clientereporteRoutes');
+
 
 //logins
 router.use('/login', loginRoutes);
@@ -45,6 +47,8 @@ router.use('/configuser', configuserRoutes);
 router.use('/configempresa', configempresaRoutes);
 router.use('/updateempresa', configureempresaRoutes);
 router.use('/updsar', updatesarRoutes);
+router.use('/Clientes', ClienteReporte);
+
 
 //empresas rutas
 router.use('/sar', sarRoutes);

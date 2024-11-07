@@ -35,6 +35,10 @@ const inventarioRouter = require('./inventariosRoutes.js');
 const ClienteReporte = require('./clientereporteRoutes');
 
 
+//ventas y compras
+const ventasRouter = require('./ventasRouter.js');
+
+
 //logins
 router.use('/login', loginRoutes);
 router.use('/perfil', perfilRoutes);
@@ -69,5 +73,9 @@ router.use('/sucursales', sucursalRouter);
 router.use('/productos', productosRoutes);
 router.use('/inventario', inventarioRouter);
 router.use('/unidad-medida', unidadMedidaRouter);
+
+//ventas y compras
+router.use('/ventas', ventasRouter);
+
 
 module.exports = router;

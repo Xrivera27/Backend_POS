@@ -1,13 +1,14 @@
 const getSucursalesbyUser = async (id_usuario, supabase) => {
     try {
+
         const { data: sucursales, error} = await supabase
         .from('sucursales_usuarios')
         .select('id_sucursal')
         .eq('id_usuario', id_usuario)
         .single();
 
-
         if (error) {
+            console.log(error);
             throw 'Ocurrio un error al obtener sucursales de Usuario';
         }
 

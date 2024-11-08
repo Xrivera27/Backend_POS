@@ -1,6 +1,7 @@
 const { getSucursalesbyUser } = require('../db/sucursalUsuarioSvc.js');
 const { format } = require('date-fns');
 const { getEmpresaId } = require('../db/empresaSvc.js');
+const { buscarProductoInventario, reducirInventario } = require('../db/inventarioSvc.js');
 
 const getPrePage = async (req, res) => {
     const supabase = req.supabase;
@@ -129,7 +130,7 @@ const getDatosSAR = async (id_sucursal, supabase) => {
 
   const verificarRtn = async (req, res) => {
     const supabase = req.supabase;
-    const rtn = req.params. rtn;
+    const rtn = req.params.rtn;
     try {
         const { data: cliente, error } = await supabase.from('Clientes')
         .select('id_cliente, nombre_completo, rtn')
@@ -161,6 +162,8 @@ const getDatosSAR = async (id_sucursal, supabase) => {
     const id_usuario = req.params.id_usuario;
 
     try {
+
+        const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
         const id_empresa = await getEmpresaId(id_usuario, supabase);
         const { data: producto, error } = await supabase.from('producto')
         .select('id_producto, nombre, precio_unitario')
@@ -169,7 +172,7 @@ const getDatosSAR = async (id_sucursal, supabase) => {
         .eq('id_empresa', id_empresa)
         .single();
 
-        if(!producto){
+        if(!producto || !await buscarProductoInventario(producto.id_producto, id_sucursal, supabase)){
             return res.status(500).json({existe: false});
         }
         
@@ -179,6 +182,7 @@ const getDatosSAR = async (id_sucursal, supabase) => {
         }
 
         res.status(200).json(producto);
+        
 
     } catch (error) {
         res.status(500).json({
@@ -191,13 +195,14 @@ const getDatosSAR = async (id_sucursal, supabase) => {
     const supabase = req.supabase;
     const {
         id_cliente,
-        id_sucursal,
-        id_usuario,
         productos
 
      } = req.body;
 
+     const id_usuario = req.params.id_usuario;
+
      try {
+        const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
 
         if (productos.length <= 0){
             console.error('Error al recibir productos:', error.message);
@@ -216,7 +221,7 @@ const getDatosSAR = async (id_sucursal, supabase) => {
            throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
         }
 
-       const {exitos, factura} = await calcularDetallesVenta(venta[0].id_venta, productos, supabase);
+       const {exitos, factura} = await calcularDetallesVenta(venta[0].id_venta, productos, id_sucursal, supabase);
 
        if (exitos != productos.length){
         throw 'Alguno productos no fueron agregados';
@@ -233,7 +238,7 @@ const getDatosSAR = async (id_sucursal, supabase) => {
      }
   }
 
-  const calcularDetallesVenta = async (id_venta, productos, supabase) => {
+  const calcularDetallesVenta = async (id_venta, productos, id_sucursal, supabase) => {
 
     let exitos = 0;
     let totalDetalle = 0;
@@ -267,6 +272,10 @@ const getDatosSAR = async (id_sucursal, supabase) => {
         else {
             totalDetalle = producto.precio_unitario * elementoProducto.cantidad;
             elementoProducto.precio_usar = producto.precio_unitario;
+        }
+
+        if (!await reducirInventario(elementoProducto.id_producto, id_sucursal, elementoProducto.cantidad, supabase)){
+            throw 'Ocurrio un error al actualizar inventario';
         }
 
     } catch (error) {

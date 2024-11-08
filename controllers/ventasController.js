@@ -1,7 +1,7 @@
 const { getSucursalesbyUser } = require('../db/sucursalUsuarioSvc.js');
 const { format } = require('date-fns');
 const { getEmpresaId } = require('../db/empresaSvc.js');
-const { buscarProductoInventario, reducirInventario } = require('../db/inventarioSvc.js');
+const { buscarProductoInventario, reducirInventario, addInventarioRollBack } = require('../db/inventarioSvc.js');
 const calculos = require('../db/ventasSvs.js');
 
 const getPrePage = async (req, res) => {
@@ -157,9 +157,10 @@ const getDatosSAR = async (id_sucursal, supabase) => {
 
   }
 
-  const getProductobyCodigo = async (req, res) => {
+  const selectProductoCodigo = async (req, res) => {
     const supabase = req.supabase;
-    const codigoProducto = req.params.codigo;
+
+    const { codigo, cantidad } = req.body;
     const id_usuario = req.params.id_usuario;
 
     try {
@@ -167,8 +168,8 @@ const getDatosSAR = async (id_sucursal, supabase) => {
         const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
         const id_empresa = await getEmpresaId(id_usuario, supabase);
         const { data: producto, error } = await supabase.from('producto')
-        .select('id_producto, nombre, precio_unitario')
-        .eq('codigo_producto', codigoProducto)
+        .select('id_producto, nombre, precio_unitario, impuesto')
+        .eq('codigo_producto', codigo)
         .eq('estado', true)
         .eq('id_empresa', id_empresa)
         .single();
@@ -181,6 +182,20 @@ const getDatosSAR = async (id_sucursal, supabase) => {
             console.error('Error al obtener los datos de la tabla:', error.message);
             throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
         }
+
+        const id_inventario = await reducirInventario(producto.id_producto, id_sucursal, cantidad, supabase);
+
+        if (!id_inventario){
+            console.error('Error al actualizar inventario');
+            throw new Error('Ocurrió un error al actualizar inventario.');
+        }
+
+         if(!await addInventarioRollBack(producto.id_producto, id_usuario, cantidad, supabase)){
+            console.error('Error al actualizar inventario roll back');
+            throw new Error('Ocurrió un error al actualizar inventario roll back.');
+         }
+
+       producto.precioImpuesto = calculos.impuestoProducto(producto.precio_unitario, producto.impuesto);
 
         res.status(200).json(producto);
         
@@ -318,4 +333,4 @@ const getDatosSAR = async (id_sucursal, supabase) => {
     }
   }
 
-module.exports = { getPrePage, getProductPage, verificarRtn, getProductobyCodigo, postVenta, pagarFacturaEfectivo }
+module.exports = { getPrePage, getProductPage, verificarRtn, selectProductoCodigo, postVenta, pagarFacturaEfectivo }

@@ -5,9 +5,6 @@ const calculos = {
 
         let exitos = 0;
         let subTotalVenta = 0;
-        
-        
-    
         try{
             for (const elementoProducto of productos){
             const { totalDetalle, precio_usar } = await this.calcularDetalleProducto(elementoProducto, supabase);
@@ -39,9 +36,6 @@ const calculos = {
                 console.error('Error en el proceso:', error);
                 return 'Error al aplicar calcular detalles venta '+error;
             }
-    
-        
-    
       },
 
       async calcularSubtotalVenta(id_venta, subTotalVenta, productos, supabase){
@@ -173,6 +167,27 @@ const calculos = {
             console.error('Error en el proceso:', error);
             return 'Error '+error;
         }
+      },
+
+      impuestoProducto(precio_unitario, impuesto){
+        let precio;
+        switch(impuesto){
+            case 1 || '1':
+                precio = precio_unitario + (precio_unitario * 0.15);
+            break;
+
+            case 2 || '2':
+                precio = precio_unitario + (precio_unitario * 0.15);
+            break;
+
+            case 3 || '3':
+                precio = precio_unitario;
+            break;
+
+            default: console.log(`Impuesto: ${producto.impuesto} de producto ${producto.codigo_producto} no encontrado`);
+        }
+
+        return precio;
       },
     
       calcularImpuestos(productos){

@@ -1,7 +1,5 @@
-const {  reducirInventario } = require('./inventarioSvc.js');
-
 const calculos = {
-    async calcularDetallesVenta(id_venta, productos, id_sucursal, supabase) {
+    async calcularDetallesVenta(id_venta, productos, supabase) {
 
         let exitos = 0;
         let subTotalVenta = 0;
@@ -37,6 +35,35 @@ const calculos = {
                 return 'Error al aplicar calcular detalles venta '+error;
             }
       },
+
+    async obtenerProductosCantidad(id_venta, supabase) {
+      try {
+        const { data: detallesVenta, error: errorVenta } = await supabase
+          .from('ventas_detalles')
+          .select('id_producto, cantidad')
+          .eq('id_venta', id_venta);
+    
+        if (errorVenta) {
+          console.error("Error al obtener los detalles de la venta:", errorVenta.message);
+          return { success: false, message: errorVenta.message };
+        }
+        const { data: productoNombre, error: errorProducto } = await supabase
+        .from('producto')
+        .select('nombre')
+        .eq('id_producto', detallesVenta.id_producto);
+        if (errorProducto) {
+          console.error("Error al obtener los detalles de la venta:", errorVenta.message);
+          return { success: false, message: errorVenta.message };
+        }
+        detallesVenta.nombre = productoNombre.nombre;
+    
+        return detallesVenta;
+      } catch (error) {
+        console.error("Error inesperado:", error);
+        return { success: false, message: "Error inesperado al obtener los productos." };
+      }
+    },
+      
 
       async calcularSubtotalVenta(id_venta, subTotalVenta, productos, supabase){
         try {
@@ -226,6 +253,48 @@ const calculos = {
     
       },
     
+      async obtenerTotalFactura(id_venta, supabase){
+        try {
+            const { data: totalfactura, error } = await supabase.from('facturas')
+            .select('total')
+            .eq('id_venta', id_venta)
+            .single();
+    
+            if(error){
+                console.error('Error al obtener los datos de la tabla:', error.message);
+                throw new Error('Ocurrió un error al obtener total de facturas.');
+            }
+    
+            return totalfactura.total;
+    
+        } catch (error) {
+            console.error('Error en el proceso:', error);
+            return 'Error al recuperar total de venta '+error;
+        }
+      },
+    
+      async cambiarEstadoVenta(id_venta, supabase, estado){
+        try {
+            const { data: venta, error } = await supabase.from('Ventas')
+            .update({
+                estado: estado
+            })
+            .select('estado')
+            .eq('id_venta', id_venta);
+    
+            if(error){
+                console.error('Error al obtener los datos de la tabla:', error.message);
+                throw new Error('Ocurrió un error al actualizar estado de ventas.');
+            }
+    
+            return true;
+    
+        } catch (error) {
+            console.error('Error en el proceso:', error);
+            return 'Error al recuperar total de venta '+error;
+        }
+      },
+
       async obtenerTotalFactura(id_venta, supabase){
         try {
             const { data: totalfactura, error } = await supabase.from('facturas')

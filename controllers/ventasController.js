@@ -1,7 +1,7 @@
 const { getSucursalesbyUser } = require('../db/sucursalUsuarioSvc.js');
 const { format } = require('date-fns');
 const { getEmpresaId } = require('../db/empresaSvc.js');
-const { buscarProductoInventario, reducirInventario, addInventarioRollBack } = require('../db/inventarioSvc.js');
+const { buscarProductoInventario, reducirInventario, addInventarioRollBack, eliminarInventarioRollBack } = require('../db/inventarioSvc.js');
 const calculos = require('../db/ventasSvs.js');
 
 const getPrePage = async (req, res) => {
@@ -237,7 +237,7 @@ const getDatosSAR = async (id_sucursal, supabase) => {
            throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
         }
 
-      const {exitos, factura} = await calculos.calcularDetallesVenta(venta[0].id_venta, productos, id_sucursal, supabase);
+      const {exitos, factura} = await calculos.calcularDetallesVenta(venta[0].id_venta, productos, supabase);
 
        if (exitos != productos.length){
         throw 'Algunos productos no fueron agregados';
@@ -256,10 +256,10 @@ const getDatosSAR = async (id_sucursal, supabase) => {
 
   const pagarFacturaEfectivo = async (req, res) => {
     const supabase = req.supabase;
-    const { pago, id_venta } = req.body;
+    const { pago, id_venta, id_usuario } = req.body;
 
     try {
-        const totalFactura = await obtenerTotalFactura(id_venta, supabase);
+        const totalFactura = await calculos.obtenerTotalFactura(id_venta, supabase);
 
         if(totalFactura > pago){
             return res.status(500).json({response: 'Saldo insuficiente'});
@@ -278,9 +278,20 @@ const getDatosSAR = async (id_sucursal, supabase) => {
             throw new Error('Ocurrió un error al obtener datos de la tabla inventario.');
         }
 
-        if(!await cambiarEstadoVenta(id_venta, supabase, 'Pagada')){
+        if(!await calculos.cambiarEstadoVenta(id_venta, supabase, 'Pagada')){
             throw 'Error al cambiar estado de venta.';
         }
+
+        const detallesProductos = await calculos.obtenerProductosCantidad(id_venta, supabase);
+
+        if( detallesProductos.length < 1 ){
+            return res.status(500).json({
+                errorMessage: 'Ocurrio un error al obtener los detalles de la venta, no se elimino del inventario',
+                cambio: cambio[0].cambio
+            });
+        }
+
+        await eliminarInventarioRollBack(detallesProductos, id_usuario, supabase);
 
         res.status(200).json(cambio);
 

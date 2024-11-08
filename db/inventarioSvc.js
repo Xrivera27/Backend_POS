@@ -149,44 +149,39 @@ const addInventarioRollBack = async (id_producto, id_usuario, cantidad, supabase
     }
 };
 
-const eliminarInventarioRollBack = async (id_inventario, id_usuario, supabase) => {
+// const reducirInventarioRollBack = async (id_producto, id_usuario, cantidad, supabase) => {
+//     try {
+//         const inventarioExistente = await verificarInventarioRollBack(id_producto, id_usuario, supabase);
+
+//         if(!inventarioExistente){
+
+//         }
+
+//     } catch (error) {
+        
+//     }
+// }
+
+const eliminarInventarioRollBack = async (productos, id_usuario, supabase) => {
     try {
-        // Verifica si el registro existe en la tabla inventario_roll_back
-        const { data: inventario, error: buscarError } = await supabase
-            .from('inventario_roll_back')
-            .select('id_inventario_roll_back')
-            .eq('id_inventario', id_inventario)
-            .eq('id_usuario', id_usuario)
-            .single();
-
-        if (buscarError) {
-            throw new Error("Error al buscar el registro en inventario rollback: " + buscarError.message);
-        }
-
-        if (!inventario) {
-            console.log("No existe un registro con el id_inventario e id_usuario especificados en inventario rollback.");
-            return false;
-        }
-
-        // Elimina el registro encontrado
-        const { error: eliminarError } = await supabase
-            .from('inventario_roll_back')
-            .delete()
-            .eq('id_inventario_roll_back', inventario.id_inventario_roll_back);
-
-        if (eliminarError) {
-            throw new Error("Error al eliminar el registro en inventario rollback: " + eliminarError.message);
-        }
-
-        console.log("Registro eliminado en inventario rollback.");
-        return true;
+        const deleteInventarioRoll = productos.map(producto => 
+            supabase
+                .from('inventario_roll_back')
+                .delete() // Corregido aquí
+                .eq('id_usuario', id_usuario)
+                .eq('id_producto', producto.id_producto)
+        ); 
+ 
+        const resultado = await Promise.all(deleteInventarioRoll);
+        resultado.forEach(({ error }, index) =>  {
+            if (error) {
+                console.error(`Error al eliminar el producto con ID ${productos[index].id_producto}:`, error);
+            }
+        });
     } catch (error) {
-        console.error("Error en eliminar inventario rollback:", error.message);
-        return false;
+        console.error("Error en el proceso de eliminación:", error);
     }
-};
-
-
-
+ };
+ 
 
 module.exports = { postFirstinventario, buscarProductoInventario, reducirInventario, addInventarioRollBack, eliminarInventarioRollBack }

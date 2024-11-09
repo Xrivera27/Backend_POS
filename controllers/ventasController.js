@@ -70,7 +70,7 @@ const getProductPage = async (req, res) => {
 
         for (const producto of inventarios){
             const { data: p, errorProducto } = await supabase.from('producto')
-            .select('id_producto, nombre, precio_unitario, estado')
+            .select('id_producto, codigo_producto, nombre, precio_unitario, impuesto, estado')
             .eq('id_producto', producto.id_producto)
             .single();
 
@@ -83,16 +83,15 @@ const getProductPage = async (req, res) => {
                 continue;
             }
 
-            arrayProductos.push(p);
+            p.precioImpuesto = calculos.impuestoProducto(p.precio_unitario, p.impuesto);
 
+            arrayProductos.push(p);
         }
 
-        const numeroActualSar = await getDatosSAR(id_sucursal, supabase);
 
-        res.status(200).json({
-            productos: arrayProductos,
-            numeroActualSar: numeroActualSar
-        });
+        res.status(200).json(
+        arrayProductos
+           );
 
     } catch (error) {
         res.status(500).json({
@@ -190,14 +189,14 @@ const getDatosSAR = async (id_sucursal, supabase) => {
             throw new Error('Ocurrió un error al actualizar inventario.');
         }
 
-         if(!await addInventarioRollBack(producto.id_producto, id_usuario, cantidad, supabase)){
+         if(!await addInventarioRollBack(id_inventario, id_usuario, cantidad, supabase)){
             console.error('Error al actualizar inventario roll back');
             throw new Error('Ocurrió un error al actualizar inventario roll back.');
          }
 
-       producto.precioImpuesto = calculos.impuestoProducto(producto.precio_unitario, producto.impuesto);
-
-        res.status(200).json(producto);
+        res.status(200).json({
+            message: 'Actualizacion de inventario exitosa!'
+        });
         
 
     } catch (error) {
@@ -281,17 +280,9 @@ const getDatosSAR = async (id_sucursal, supabase) => {
         if(!await calculos.cambiarEstadoVenta(id_venta, supabase, 'Pagada')){
             throw 'Error al cambiar estado de venta.';
         }
+        
 
-        const detallesProductos = await calculos.obtenerProductosCantidad(id_venta, supabase);
-
-        if( detallesProductos.length < 1 ){
-            return res.status(500).json({
-                errorMessage: 'Ocurrio un error al obtener los detalles de la venta, no se elimino del inventario',
-                cambio: cambio[0].cambio
-            });
-        }
-
-        await eliminarInventarioRollBack(detallesProductos, id_usuario, supabase);
+        await eliminarInventarioRollBack( id_usuario, supabase);
 
         res.status(200).json(cambio);
 

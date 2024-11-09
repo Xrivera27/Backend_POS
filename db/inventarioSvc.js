@@ -93,12 +93,12 @@ const reducirInventario = async (id_producto, id_sucursal, cantidad, supabase) =
     }
 };
 
-const verificarInventarioRollBack = async (id_producto, id_usuario, supabase) => {
+const verificarInventarioRollBack = async (id_inventario, id_usuario, supabase) => {
     try {
         const { data: inventario, error } = await supabase
             .from('inventario_roll_back')
             .select('id_inventario_roll_back, cantidad')
-            .eq('id_producto', id_producto)
+            .eq('id_inventario', id_inventario)
             .eq('id_usuario', id_usuario)
             .single();
 
@@ -113,12 +113,12 @@ const verificarInventarioRollBack = async (id_producto, id_usuario, supabase) =>
     }
 };
 
-const addInventarioRollBack = async (id_producto, id_usuario, cantidad, supabase) => {
+const addInventarioRollBack = async (id_inventario, id_usuario, cantidad, supabase) => {
     try {
-        const inventarioExistente = await verificarInventarioRollBack(id_producto, id_usuario, supabase);
+        const inventarioExistente = await verificarInventarioRollBack(id_inventario, id_usuario, supabase);
 
         if (inventarioExistente) {
-            // Actualiza la cantidad sumando la cantidad existente y la nueva cantidad
+            
             const nuevaCantidad = inventarioExistente.cantidad + cantidad;
 
             const { error } = await supabase.from('inventario_roll_back')
@@ -132,7 +132,7 @@ const addInventarioRollBack = async (id_producto, id_usuario, cantidad, supabase
         } else {
             // Inserta un nuevo registro si no existe
             const { error } = await supabase.from('inventario_roll_back').insert({
-                id_producto: id_producto,
+                id_inventario: id_inventario,
                 id_usuario: id_usuario,
                 cantidad: cantidad
             });
@@ -149,39 +149,23 @@ const addInventarioRollBack = async (id_producto, id_usuario, cantidad, supabase
     }
 };
 
-// const reducirInventarioRollBack = async (id_producto, id_usuario, cantidad, supabase) => {
-//     try {
-//         const inventarioExistente = await verificarInventarioRollBack(id_producto, id_usuario, supabase);
-
-//         if(!inventarioExistente){
-
-//         }
-
-//     } catch (error) {
-        
-//     }
-// }
-
-const eliminarInventarioRollBack = async (productos, id_usuario, supabase) => {
+const eliminarInventarioRollBack = async (id_usuario, supabase) => {
     try {
-        const deleteInventarioRoll = productos.map(producto => 
-            supabase
-                .from('inventario_roll_back')
-                .delete() // Corregido aquí
-                .eq('id_usuario', id_usuario)
-                .eq('id_producto', producto.id_producto)
-        ); 
- 
-        const resultado = await Promise.all(deleteInventarioRoll);
-        resultado.forEach(({ error }, index) =>  {
-            if (error) {
-                console.error(`Error al eliminar el producto con ID ${productos[index].id_producto}:`, error);
-            }
-        });
+       
+        const { error } = await supabase
+            .from('inventario_roll_back')
+            .delete()
+            .eq('id_usuario', id_usuario)
+            .eq('guardado', false);
+
+        if (error) {
+            console.error(`Error al eliminar los registros de inventario para el usuario ${id_usuario}:`, error);
+        } else {
+            console.log(`Registros de inventario eliminados exitosamente para el usuario ${id_usuario}.`);
+        }
     } catch (error) {
         console.error("Error en el proceso de eliminación:", error);
     }
- };
- 
+};
 
 module.exports = { postFirstinventario, buscarProductoInventario, reducirInventario, addInventarioRollBack, eliminarInventarioRollBack }

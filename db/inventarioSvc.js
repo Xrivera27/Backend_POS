@@ -1,3 +1,27 @@
+const getInventario = async (id_producto, id_sucursal, supabase) => {
+    try {
+
+        const { data: inventario, error } = await supabase
+            .from('inventarios')
+            .select('id_inventario, stock_actual')
+            .eq('id_sucursal', id_sucursal)
+            .eq('id_producto', id_producto)
+            .single();
+
+        
+        if (error) {
+            console.error("Error fetching inventory:", error.message);
+            throw new Error("No se pudo obtener el inventario. Intenta de nuevo.");
+        }
+
+        return inventario;
+        
+    } catch (error) {
+        console.error("Unexpected error:", error);
+        throw new Error("Hubo un error inesperado al obtener el inventario.");
+    }
+};
+
 const postFirstinventario = async (id_producto, id_sucursal, supabase) => {
     try {
         const { data: inventario, error } = supabase
@@ -18,4 +42,181 @@ const postFirstinventario = async (id_producto, id_sucursal, supabase) => {
     }
 }
 
-module.exports = { postFirstinventario }
+const buscarProductoInventario = async (id_producto, id_sucursal, supabase) => {
+    try {
+        const { data: inventario, error } = await supabase.from('inventarios')
+        .select('id_inventario')
+        .eq('id_producto', id_producto)
+        .eq('id_sucursal', id_sucursal)
+        .single();
+
+        if (inventario){
+            return inventario;
+        }
+
+        else return false;
+
+    } catch (error) {
+        console.log('Error buscando producto: ' +error);
+        return new Error(error);
+    }
+}
+
+const reducirInventario = async (id_producto, id_sucursal, cantidad, supabase) => {
+    try {
+        const inventario = await getInventario(id_producto, id_sucursal, supabase);
+
+        if (!inventario) {
+            throw new Error("Inventario no encontrado");
+        }
+
+        if (cantidad > inventario.stock_actual) {
+            throw new Error("No hay suficiente stock en el inventario");
+        }
+
+        const { error } = await supabase.rpc('reducir_stock', {id_inventario_param: inventario.id_inventario, cantidad: cantidad});
+
+        if (error) {
+            throw new Error("Ocurrió un error al actualizar inventario: " + error.message);
+        }
+
+        return inventario.id_inventario;
+
+    } catch (error) {
+        console.error("Error en reducirInventario:", error.message);
+        return false; // Devolvemos false en caso de error
+    }
+};
+
+const aumentarInventario = async (inventario, cantidad, supabase) => {
+    try {
+
+        if (!inventario) {
+            throw new Error("Inventario no encontrado");
+        }
+
+        const { error } = await supabase.rpc('aumentar_stock', {id_inventario_param: inventario.id_inventario, cantidad: cantidad});
+
+        if (error) {
+            throw new Error("Ocurrió un error al actualizar inventario: " + error.message);
+        }
+
+        return inventario.id_inventario;
+
+    } catch (error) {
+        console.error("Error en aumentarInventario:", error.message);
+        return false; // Devolvemos false en caso de error
+    }
+};
+
+const verificarInventarioRollBack = async (id_inventario, id_usuario, supabase) => {
+    try {
+        const { data: inventario, error } = await supabase
+            .from('inventario_roll_back')
+            .select('id_inventario_roll_back, cantidad')
+            .eq('id_inventario', id_inventario)
+            .eq('id_usuario', id_usuario)
+            .single();
+
+        if (error && error.code !== 'PGRST116') { // Ignora el error cuando no se encuentran registros
+            throw new Error("Ocurrió un error al verificar el inventario rollback: " + error.message);
+        }
+
+        return inventario || null; // Devuelve el registro o `null` si no existe
+    } catch (error) {
+        console.error("Error en verificar inventario rollback:", error.message);
+        return null;
+    }
+};
+
+const addInventarioRollBack = async (id_inventario, id_usuario, cantidad, supabase) => {
+    try {
+        const inventarioExistente = await verificarInventarioRollBack(id_inventario, id_usuario, supabase);
+
+        if (inventarioExistente) {
+            
+            const nuevaCantidad = inventarioExistente.cantidad + cantidad;
+
+            const { error } = await supabase.from('inventario_roll_back')
+                .update({ cantidad: nuevaCantidad })
+                .eq('id_inventario_roll_back', inventarioExistente.id_inventario_roll_back);
+
+            if (error) {
+                throw new Error("Ocurrió un error al actualizar la cantidad en inventario rollback: " + error.message);
+            }
+
+        } else {
+            // Inserta un nuevo registro si no existe
+            const { error } = await supabase.from('inventario_roll_back').insert({
+                id_inventario: id_inventario,
+                id_usuario: id_usuario,
+                cantidad: cantidad
+            });
+
+            if (error) {
+                throw new Error("Ocurrió un error al insertar en inventario rollback: " + error.message);
+            }
+        }
+
+        return true;
+    } catch (error) {
+        console.error("Error en agregar inventario rollback:", error.message);
+        return false;
+    }
+};
+
+const eliminarInventarioRollBack = async (id_usuario, supabase) => {
+    try {
+       
+        const { error } = await supabase
+            .from('inventario_roll_back')
+            .delete()
+            .eq('id_usuario', id_usuario)
+            .eq('abierto', true);
+
+        if (error) {
+            console.error(`Error al eliminar los registros de inventario para el usuario ${id_usuario}:`, error);
+        } else {
+            console.log(`Registros de inventario eliminados exitosamente para el usuario ${id_usuario}.`);
+        }
+    } catch (error) {
+        console.error("Error en el proceso de eliminación:", error);
+    }
+};
+
+const eliminarInventarioRollBackEsp = async (inventario, id_inventario_roll_back, supabase) => {
+    try {
+        
+        const { data: inventarioRB, error: errorGet } = await supabase.from('inventario_roll_back')
+        .select('cantidad')
+        .eq('id_inventario_roll_back', id_inventario_roll_back)
+        .single();
+
+        const { error } = await supabase
+            .from('inventario_roll_back')
+            .delete()
+            .eq('id_inventario_roll_back', id_inventario_roll_back)
+            .eq('abierto', true);
+
+
+        if (error || errorGet) {
+            console.error(`Error al eliminar los registros de inventario para el usuario ${id_inventario_roll_back}:`, error);
+        } else {
+            console.log(`Registros de inventario eliminados exitosamente para el usuario ${id_inventario_roll_back}.`);
+            await aumentarInventario(inventario, inventarioRB.cantidad, supabase);
+            return inventario.cantidad;
+        }
+    } catch (error) {
+        console.error("Error en el proceso de eliminación:", error);
+    }
+}
+
+module.exports = { 
+    postFirstinventario, 
+    buscarProductoInventario, 
+    reducirInventario,
+    verificarInventarioRollBack, 
+    addInventarioRollBack, 
+    eliminarInventarioRollBack, 
+    eliminarInventarioRollBackEsp 
+}

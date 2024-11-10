@@ -1,6 +1,15 @@
 const { getSucursalesbyUser } = require('../db/sucursalUsuarioSvc.js');
 const { format } = require('date-fns');
 const { getEmpresaId } = require('../db/empresaSvc.js');
+const { 
+    buscarProductoInventario, 
+    reducirInventario, 
+    addInventarioRollBack, 
+    verificarInventarioRollBack, 
+    eliminarInventarioRollBack,
+    eliminarInventarioRollBackEsp
+} = require('../db/inventarioSvc.js');
+const calculos = require('../db/ventasSvs.js');
 
 const getPrePage = async (req, res) => {
     const supabase = req.supabase;
@@ -68,7 +77,7 @@ const getProductPage = async (req, res) => {
 
         for (const producto of inventarios){
             const { data: p, errorProducto } = await supabase.from('producto')
-            .select('id_producto, nombre, precio_unitario, estado')
+            .select('id_producto, codigo_producto, nombre, precio_unitario, impuesto, estado')
             .eq('id_producto', producto.id_producto)
             .single();
 
@@ -81,16 +90,15 @@ const getProductPage = async (req, res) => {
                 continue;
             }
 
-            arrayProductos.push(p);
+            p.precioImpuesto = calculos.impuestoProducto(p.precio_unitario, p.impuesto);
 
+            arrayProductos.push(p);
         }
 
-        const numeroActualSar = await getDatosSAR(id_sucursal, supabase);
 
-        res.status(200).json({
-            productos: arrayProductos,
-            numeroActualSar: numeroActualSar
-        });
+        res.status(200).json(
+        arrayProductos
+           );
 
     } catch (error) {
         res.status(500).json({
@@ -129,7 +137,7 @@ const getDatosSAR = async (id_sucursal, supabase) => {
 
   const verificarRtn = async (req, res) => {
     const supabase = req.supabase;
-    const rtn = req.params. rtn;
+    const rtn = req.params.rtn;
     try {
         const { data: cliente, error } = await supabase.from('Clientes')
         .select('id_cliente, nombre_completo, rtn')
@@ -155,21 +163,24 @@ const getDatosSAR = async (id_sucursal, supabase) => {
 
   }
 
-  const getProductobyCodigo = async (req, res) => {
+  const selectProductoCodigo = async (req, res) => {
     const supabase = req.supabase;
-    const codigoProducto = req.params.codigo;
+
+    const { codigo, cantidad } = req.body;
     const id_usuario = req.params.id_usuario;
 
     try {
+
+        const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
         const id_empresa = await getEmpresaId(id_usuario, supabase);
         const { data: producto, error } = await supabase.from('producto')
-        .select('id_producto, nombre, precio_unitario')
-        .eq('codigo_producto', codigoProducto)
+        .select('id_producto, nombre, precio_unitario, impuesto')
+        .eq('codigo_producto', codigo)
         .eq('estado', true)
         .eq('id_empresa', id_empresa)
         .single();
 
-        if(!producto){
+        if(!producto || !await buscarProductoInventario(producto.id_producto, id_sucursal, supabase)){
             return res.status(500).json({existe: false});
         }
         
@@ -178,7 +189,22 @@ const getDatosSAR = async (id_sucursal, supabase) => {
             throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
         }
 
-        res.status(200).json(producto);
+        const id_inventario = await reducirInventario(producto.id_producto, id_sucursal, cantidad, supabase);
+
+        if (!id_inventario){
+            console.error('Error al actualizar inventario');
+            throw new Error('Ocurrió un error al actualizar inventario.');
+        }
+
+         if(!await addInventarioRollBack(id_inventario, id_usuario, cantidad, supabase)){
+            console.error('Error al actualizar inventario roll back');
+            throw new Error('Ocurrió un error al actualizar inventario roll back.');
+         }
+
+        res.status(200).json({
+            message: 'Actualizacion de inventario exitosa!'
+        });
+        
 
     } catch (error) {
         res.status(500).json({
@@ -191,13 +217,14 @@ const getDatosSAR = async (id_sucursal, supabase) => {
     const supabase = req.supabase;
     const {
         id_cliente,
-        id_sucursal,
-        id_usuario,
         productos
 
      } = req.body;
 
+     const id_usuario = req.params.id_usuario;
+
      try {
+        const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
 
         if (productos.length <= 0){
             console.error('Error al recibir productos:', error.message);
@@ -216,10 +243,10 @@ const getDatosSAR = async (id_sucursal, supabase) => {
            throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
         }
 
-       const {exitos, factura} = await calcularDetallesVenta(venta[0].id_venta, productos, supabase);
+      const {exitos, factura} = await calculos.calcularDetallesVenta(venta[0].id_venta, productos, supabase);
 
        if (exitos != productos.length){
-        throw 'Alguno productos no fueron agregados';
+        throw 'Algunos productos no fueron agregados';
        }
 
         res.status(200).json({ 
@@ -233,207 +260,44 @@ const getDatosSAR = async (id_sucursal, supabase) => {
      }
   }
 
-  const calcularDetallesVenta = async (id_venta, productos, supabase) => {
-
-    let exitos = 0;
-    let totalDetalle = 0;
-    let subTotalVenta = 0;
-    
-    for (const elementoProducto of productos){
-
-        try {
-            
-        const { data:  producto, error } = await supabase.from('producto')
-        .select('precio_unitario, precio_mayorista, cantidad_activar_mayorista')
-        .eq('id_producto',elementoProducto.id_producto)
-        .single();
-
-
-        if(error){
-            console.error('Error al obtener los datos de la tabla:', error.message);
-            throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
-        }
-
-        if (
-            producto.precio_mayorista > 0 && 
-            producto.precio_mayorista !== null && 
-            producto.precio_mayorista !== undefined &&
-            producto.cantidad_activar_mayorista <= elementoProducto.cantidad
-        )
-            {
-                totalDetalle = producto.precio_mayorista * elementoProducto.cantidad;
-                elementoProducto.precio_usar = producto.precio_mayorista;
-        }
-        else {
-            totalDetalle = producto.precio_unitario * elementoProducto.cantidad;
-            elementoProducto.precio_usar = producto.precio_unitario;
-        }
-
-    } catch (error) {
-        console.error('Error en el proceso:', error);
-        return 'Error al aplicar calcular detalles venta '+error;
-    }
-
-    try{
-        const { error } = await supabase.from('ventas_detalles')
-        .insert({
-            id_venta: id_venta,
-            id_producto: elementoProducto.id_producto,
-            cantidad: elementoProducto.cantidad,
-            total_detalle: totalDetalle
-        }).select('*');
-
-        if(error){
-            console.error('Error al obtener los datos de la tabla:', error.message);
-            throw new Error('Ocurrió un error al insertar datos de la tabla detalles ventas.');
-        }
-
-        subTotalVenta += totalDetalle;
-
-        exitos++;
-    }
-
-         catch (error) {
-            console.error('Error en el proceso:', error);
-            return 'Error al aplicar calcular detalles venta '+error;
-        }
-
-    }
-
+  const eliminarProductoVenta = async (req, res) => {
+    const id_usuario = req.params.id_usuario;
+    const { id_producto } = req.body;
+    const supabase = req.supabase;
     try {
-        const { data: venta, error } = await supabase.from('Ventas')
-        .update({
-            sub_total: subTotalVenta
+        const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+        const inventario = await buscarProductoInventario(id_producto, id_sucursal, supabase);
+        
+
+        if(!inventario){
+            throw 'El producto no existe en inventario del local';
+        }
+        console.log(inventario.id_inventario);
+        const inventario_roll_back = await verificarInventarioRollBack(inventario.id_inventario, id_usuario, supabase);
+        
+
+        if(!inventario_roll_back || inventario_roll_back === null){
+            throw 'No existe roll back de este producto';
+        }
+
+        await eliminarInventarioRollBackEsp(inventario, inventario_roll_back.id_inventario_roll_back, supabase);
+
+        res.status(200).json({ message: 'Producto eliminado de venta y repuesto en inventario.' })
+        
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: error.message
         })
-        .eq('id_venta', id_venta);
-
-        if (error){
-            console.error('Error al obtener los datos de la tabla factura:', error.message);
-            throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
-        }
-
-       const factura =  await postFactura(id_venta, productos, supabase);
-        return {exitos, factura};
-
-    } catch (error) {
-        console.error('Error en el proceso:', error);
-        return 'Error al aplicar subtotal venta '+error;
     }
-
-  }
-
-  const postFactura = async (id_venta, productos, supabase) => {
-    let arrayProductos = [];
-    let subtotalTabla;
-
-    for (const producto of productos){
-        
-        const { data: productosRegistros, error } = await supabase.from('producto')
-        .select('id_producto, codigo_producto, impuesto')
-        .eq('id_producto', producto.id_producto)
-        .single();
-
-        if(error){
-            console.error('Error al obtener los datos de la tabla factura:', error.message);
-            throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
-         }
-         productosRegistros.precio_usar = producto.precio_usar;
-         productosRegistros.cantidad = producto.cantidad;
-         arrayProductos.push(productosRegistros);
-
-    }
-
-    const impuestos = calcularImpuestos(arrayProductos);
-
-    try {
-        const {data: venta, error } = await supabase.from('Ventas')
-        .select('sub_total')
-        .eq('id_venta', id_venta)
-        .single();
-
-        if(error){
-            console.error('Error al obtener los datos de la tabla Venta:', error.message);
-            throw new Error('Ocurrió un error al obtener datos de la venta.');
-         }
-
-          subtotalTabla = venta.sub_total;
-        
-    } catch (error) {
-        console.error('Error en el proceso:', error);
-        return 'Error al aplicar calcular detalles venta '+error;
-    }
-
-    try {
-        const { data: factura, error } = await supabase.from('facturas')
-        .insert({
-            id_venta: id_venta,
-            tipo_factura: "Pendiente",
-            total_extento: impuestos.extento,
-            gravado_15: impuestos.gravado_15,
-            gravado_18: impuestos.gravado_18,
-            ISV_15: impuestos.ISV_15,
-            ISV_18: impuestos.ISV_18,
-            total_ISV: impuestos.total_impuesto,
-            total: subtotalTabla + impuestos.total_impuesto
-        }).select('total_extento, gravado_15, gravado_18, total');
-
-        if(error){
-            console.error('Error al insertar factura:', error.message);
-            throw new Error('Ocurrió un error al registrar factura.');
-         }
-
-
-         factura[0].sub_total = subtotalTabla;
-         return factura[0];
-
-    } catch (error) {
-        console.error('Error en el proceso:', error);
-        return 'Error '+error;
-    }
-  }
-
-  const calcularImpuestos = (productos) => {
-    const objetoImpuestos = {
-        extento: 0,
-        gravado_15: 0,
-        gravado_18: 0,
-        ISV_15: 0,
-        ISV_18: 0,
-        total_impuesto: 0
-    };
-
-    for (const producto of productos){
-        switch(producto.impuesto){
-            case 1 || '1':
-                objetoImpuestos.gravado_15 += (producto.precio_usar * producto.cantidad);
-            break;
-
-            case 2 || '2':
-                objetoImpuestos.gravado_18 += (producto.precio_usar * producto.cantidad);
-            break;
-
-            case 3 || '3':
-                objetoImpuestos.extento += (producto.precio_usar * producto.cantidad );
-            break;
-
-            default: console.log(`Impuesto: ${producto.impuesto} de producto ${producto.codigo_producto} no encontrado`);
-        }
-    }
-
-    objetoImpuestos.ISV_15 = objetoImpuestos.gravado_15 * 0.15;
-    objetoImpuestos.ISV_18 = objetoImpuestos.gravado_18 * 0.18;
-    objetoImpuestos.total_impuesto = objetoImpuestos.ISV_15 + objetoImpuestos.ISV_18;
-
-    return objetoImpuestos;
-
   }
 
   const pagarFacturaEfectivo = async (req, res) => {
     const supabase = req.supabase;
-    const { pago, id_venta } = req.body;
+    const { pago, id_venta, id_usuario } = req.body;
 
     try {
-        const totalFactura = await obtenerTotalFactura(id_venta, supabase);
+        const totalFactura = await calculos.obtenerTotalFactura(id_venta, supabase);
 
         if(totalFactura > pago){
             return res.status(500).json({response: 'Saldo insuficiente'});
@@ -452,9 +316,12 @@ const getDatosSAR = async (id_sucursal, supabase) => {
             throw new Error('Ocurrió un error al obtener datos de la tabla inventario.');
         }
 
-        if(!await cambiarEstadoVenta(id_venta, supabase, 'Pagada')){
+        if(!await calculos.cambiarEstadoVenta(id_venta, supabase, 'Pagada')){
             throw 'Error al cambiar estado de venta.';
         }
+        
+
+        await eliminarInventarioRollBack( id_usuario, supabase);
 
         res.status(200).json(cambio);
 
@@ -507,4 +374,4 @@ const getDatosSAR = async (id_sucursal, supabase) => {
     }
   }
 
-module.exports = { getPrePage, getProductPage, verificarRtn, getProductobyCodigo, postVenta, pagarFacturaEfectivo }
+module.exports = { getPrePage, getProductPage, verificarRtn, selectProductoCodigo, postVenta, pagarFacturaEfectivo, eliminarProductoVenta }

@@ -179,7 +179,7 @@ const calculos = {
                 ISV_18: impuestos.ISV_18,
                 total_ISV: impuestos.total_impuesto,
                 total: subtotalTabla + impuestos.total_impuesto
-            }).select('total_extento, gravado_15, gravado_18, total');
+            }).select('total_ISV, total');
     
             if(error){
                 console.error('Error al insertar factura:', error.message);

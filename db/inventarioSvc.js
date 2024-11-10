@@ -44,14 +44,14 @@ const postFirstinventario = async (id_producto, id_sucursal, supabase) => {
 
 const buscarProductoInventario = async (id_producto, id_sucursal, supabase) => {
     try {
-        const { data: producto, error } = await supabase.from('inventarios')
-        .select('id_producto')
+        const { data: inventario, error } = await supabase.from('inventarios')
+        .select('id_inventario')
         .eq('id_producto', id_producto)
         .eq('id_sucursal', id_sucursal)
         .single();
 
-        if (producto){
-            return true;
+        if (inventario){
+            return inventario;
         }
 
         else return false;
@@ -168,4 +168,29 @@ const eliminarInventarioRollBack = async (id_usuario, supabase) => {
     }
 };
 
-module.exports = { postFirstinventario, buscarProductoInventario, reducirInventario, addInventarioRollBack, eliminarInventarioRollBack }
+const eliminarInventarioRollBackEsp = async (id_inventario_roll_back, supabase) => {
+    try {
+        const { error } = await supabase
+            .from('inventario_roll_back')
+            .delete()
+            .eq('id_inventario_roll_back', id_inventario_roll_back);
+
+        if (error) {
+            console.error(`Error al eliminar los registros de inventario para el usuario ${id_inventario_roll_back}:`, error);
+        } else {
+            console.log(`Registros de inventario eliminados exitosamente para el usuario ${id_inventario_roll_back}.`);
+        }
+    } catch (error) {
+        console.error("Error en el proceso de eliminación:", error);
+    }
+}
+
+module.exports = { 
+    postFirstinventario, 
+    buscarProductoInventario, 
+    reducirInventario,
+    verificarInventarioRollBack, 
+    addInventarioRollBack, 
+    eliminarInventarioRollBack, 
+    eliminarInventarioRollBackEsp 
+}

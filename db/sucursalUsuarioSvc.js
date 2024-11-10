@@ -24,6 +24,36 @@ const getSucursalesbyUser = async (id_usuario, supabase) => {
     }
 }
 
+const getDatosSarSucursal = async (id_usuario, supabase) => {
+
+    try {
+        
+        const id_sucursal = await getSucursalesbyUser(id_usuario, supabase); 
+
+        const { data: datosSar, error } = await supabase
+            .from('Datos_SAR')
+            .select('*')
+            .eq('id_sucursal', id_sucursal)
+            .eq('estado', 'Activo');
+
+        if (!datosSar || datosSar.length === 0) { 
+            console.error('No hay registro válido de la sucursal en SAR');
+            throw 'No hay registro válido de la sucursal en SAR';
+        }
+
+        if (error) {
+            console.error('Ocurrió un error', error);
+            throw 'Ocurrió un error al obtener datos SAR de la sucursal';
+        }
+
+        return datosSar;
+    } catch (error) {
+        console.log(error);
+        return false;
+    }
+};
+
+
 const insertarRelacion = async (id_usuario, id_sucursal, supabase) => {
 
     try {
@@ -69,4 +99,4 @@ const deleteRelacion = async (id, supabase) => {
     }
 }
 
-module.exports = { insertarRelacion, getSucursalesbyUser }
+module.exports = { insertarRelacion, getSucursalesbyUser, getDatosSarSucursal }

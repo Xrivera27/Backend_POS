@@ -1,4 +1,4 @@
-const { insertarRelacion, getSucursalesbyUser } = require('../db/sucursalUsuarioSvc.js');
+const { insertarRelacion, getSucursalesbyUser, getDatosSarSucursal } = require('../db/sucursalUsuarioSvc.js');
 const { getEmpresaId } = require('../db/empresaSvc.js');
 const { getRolByUsuario } = require('../db/validaciones.js');
 
@@ -84,6 +84,22 @@ const getSucursalesbyUsuarioSummary = async (req, res) => {
         
     } catch (error) {
         res.status(500).json({ Error: 'Ocurrio un error al obtener Sucursales ' + error });
+    }
+}
+
+const getSucursalValida = async (req, res) => {
+    const id_usuario = req.params.id_usuario;
+    const supabase = req.supabase;
+    try {
+        const datosSARsucursal = await getDatosSarSucursal(id_usuario, supabase);
+
+        if(!datosSARsucursal){
+            throw 'Error al obtener datos sucursal o datos desactualizados';
+        }
+        res.status(200).json({message: 'Datos SAR de sucursal activos'});
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({message: 'Datos SAR de sucursal inactivos'});
     }
 }
 
@@ -192,4 +208,4 @@ const desactivarSucursal = async (req, res) => {
     }
 }
 
-module.exports = { getSucursales, getSucursalesbyUsuario, getSucursalesbyUsuarioSummary,patchSucursal, postSucursal, desactivarSucursal }
+module.exports = { getSucursales, getSucursalesbyUsuario, getSucursalesbyUsuarioSummary,patchSucursal, postSucursal, desactivarSucursal, getSucursalValida }

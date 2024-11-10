@@ -230,13 +230,15 @@ const getDatosSAR = async (id_sucursal, supabase) => {
             console.error('Error al recibir productos:', error.message);
             throw new Error('No se recibieron productos.');
          }
+
+         const asignar = {};
+         asignar.id_sucursal = id_sucursal;
+         asignar.id_usuario = id_usuario;
+         asignar.estado = 'Pendiente de pago';
+         if(id_cliente !== 0 || id_cliente !== null){asignar.id_cliente = id_cliente}
+         
         const { data: venta, error } = await supabase.from('Ventas')
-        .insert({
-           id_cliente: id_cliente,
-           id_sucursal: id_sucursal,
-           id_usuario: id_usuario,
-           estado: "pendiente de pago",
-        }).select('id_venta');
+        .insert([asignar]).select('id_venta');
    
         if(error){
            console.error('Error al obtener los datos de la tabla:', error.message);

@@ -95,9 +95,11 @@ const postProducto = async (req, res) => {
 
         const existencia = await existenciProductCode('producto', 'codigo_producto', codigo_producto, id_empresa_param, supabase);
         if (existencia){
+            console.log('Entro aqui');
             throw 'Codigo de producto en uso';
+            
         }
-
+console.log('tambien aqui');
         const { data: producto, error } = await supabase.from('producto')
         .insert({
             nombre: nombre,

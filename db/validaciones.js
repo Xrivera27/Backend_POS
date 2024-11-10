@@ -5,6 +5,7 @@ const existenciProductCode = async (tabla, campo, atributo, id_empresa, supabase
             .select(campo)
             .eq('id_empresa', id_empresa)
             .eq(campo, atributo)
+            .eq('estado', true)
             .select('codigo_producto');
 
         if (error) {
@@ -12,7 +13,7 @@ const existenciProductCode = async (tabla, campo, atributo, id_empresa, supabase
             throw 'Error al consultar la base de datos:'; 
         }
 
-        if(existencia.length > 0){
+        if( existencia ){
 
             return true;
         }
@@ -24,7 +25,7 @@ const existenciProductCode = async (tabla, campo, atributo, id_empresa, supabase
     } catch (error) {
         
         console.error('Error en la función validarExistencia:', error);
-        throw new Error(error);
+        return false;
     }
 }
 

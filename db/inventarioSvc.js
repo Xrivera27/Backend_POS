@@ -74,12 +74,7 @@ const reducirInventario = async (id_producto, id_sucursal, cantidad, supabase) =
             throw new Error("No hay suficiente stock en el inventario");
         }
 
-        const { error } = await supabase
-            .from('inventarios')
-            .update({
-                stock_actual: inventario.stock_actual - cantidad
-            })
-            .eq('id_inventario', inventario.id_inventario);
+        const { error } = await supabase.rpc('reducir_stock', {id_inventario_param: inventario.id_inventario, cantidad: cantidad});
 
         if (error) {
             throw new Error("Ocurrió un error al actualizar inventario: " + error.message);
@@ -100,12 +95,7 @@ const aumentarInventario = async (inventario, cantidad, supabase) => {
             throw new Error("Inventario no encontrado");
         }
 
-        const { error } = await supabase
-            .from('inventarios')
-            .update({
-                stock_actual: inventario.stock_actual + cantidad
-            })
-            .eq('id_inventario', inventario.id_inventario);
+        const { error } = await supabase.rpc('aumentar_stock', {id_inventario_param: inventario.id_inventario, cantidad: cantidad});
 
         if (error) {
             throw new Error("Ocurrió un error al actualizar inventario: " + error.message);
@@ -196,18 +186,24 @@ const eliminarInventarioRollBack = async (id_usuario, supabase) => {
 
 const eliminarInventarioRollBackEsp = async (inventario, id_inventario_roll_back, supabase) => {
     try {
-        const { data: inventario, error } = await supabase
+        
+        const { data: inventarioRB, error: errorGet } = await supabase.from('inventario_roll_back')
+        .select('cantidad')
+        .eq('id_inventario_roll_back', id_inventario_roll_back)
+        .single();
+
+        const { error } = await supabase
             .from('inventario_roll_back')
-            .select('cantidad')
             .delete()
             .eq('id_inventario_roll_back', id_inventario_roll_back)
-            .eq('abierto', true)
-            .single();
+            .eq('abierto', true);
 
-        if (error) {
+
+        if (error || errorGet) {
             console.error(`Error al eliminar los registros de inventario para el usuario ${id_inventario_roll_back}:`, error);
         } else {
             console.log(`Registros de inventario eliminados exitosamente para el usuario ${id_inventario_roll_back}.`);
+            await aumentarInventario(inventario, inventarioRB.cantidad, supabase);
             return inventario.cantidad;
         }
     } catch (error) {

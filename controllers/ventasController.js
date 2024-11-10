@@ -263,27 +263,31 @@ const getDatosSAR = async (id_sucursal, supabase) => {
   const eliminarProductoVenta = async (req, res) => {
     const id_usuario = req.params.id_usuario;
     const { id_producto } = req.body;
+    const supabase = req.supabase;
     try {
         const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
         const inventario = await buscarProductoInventario(id_producto, id_sucursal, supabase);
+        
 
         if(!inventario){
             throw 'El producto no existe en inventario del local';
         }
-
+        console.log(inventario.id_inventario);
         const inventario_roll_back = await verificarInventarioRollBack(inventario.id_inventario, id_usuario, supabase);
+        
 
         if(!inventario_roll_back || inventario_roll_back === null){
             throw 'No existe roll back de este producto';
         }
 
-        await eliminarInventarioRollBackEsp(inventario_roll_back.id_inventario_roll_back, supabase);
+        await eliminarInventarioRollBackEsp(inventario, inventario_roll_back.id_inventario_roll_back, supabase);
 
         res.status(200).json({ message: 'Producto eliminado de venta y repuesto en inventario.' })
         
     } catch (error) {
+        console.log(error);
         res.status(500).json({
-            message: error
+            message: error.message
         })
     }
   }

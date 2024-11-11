@@ -1,4 +1,5 @@
-const { getSucursalesbyUser } = require('../db/sucursalUsuarioSvc.js');
+const { getSucursalesbyUser, getDatosSarSucursal } = require('../db/sucursalUsuarioSvc.js');
+
 const { format } = require('date-fns');
 const { getEmpresaId } = require('../db/empresaSvc.js');
 const { 
@@ -107,33 +108,6 @@ const getProductPage = async (req, res) => {
     }
 }
 
-const getDatosSAR = async (id_sucursal, supabase) => {
-
-    try { 
-  
-      const { data: datosSAR, error: sarError } = await supabase
-        .from('Datos_SAR')
-        .select('numero_actual_SAR')
-        .eq('id_sucursal', id_sucursal)
-        .single();
-  
-        if (sarError) {
-            console.error('Error al consultar la base de datos:', sarError);
-            throw 'Error al consultar la base de datos';
-        }
-
-        if (!datosSAR) {
-            console.error('No se encontraron datos para la SAR con ID:', id_sucursal); 
-            return false;
-        }
-
-        return datosSAR.numero_actual_SAR;
-
-    } catch (error) {
-        console.error('Error en el proceso:', error);
-        return 'Error al obtener los datos de la SAR';
-    }
-  }
 
   const verificarRtn = async (req, res) => {
     const supabase = req.supabase;
@@ -230,13 +204,15 @@ const getDatosSAR = async (id_sucursal, supabase) => {
             console.error('Error al recibir productos:', error.message);
             throw new Error('No se recibieron productos.');
          }
+
+         const asignar = {};
+         asignar.id_sucursal = id_sucursal;
+         asignar.id_usuario = id_usuario;
+         asignar.estado = 'Pendiente de pago';
+         if(id_cliente !== 0 || id_cliente !== null){asignar.id_cliente = id_cliente}
+         
         const { data: venta, error } = await supabase.from('Ventas')
-        .insert({
-           id_cliente: id_cliente,
-           id_sucursal: id_sucursal,
-           id_usuario: id_usuario,
-           estado: "pendiente de pago",
-        }).select('id_venta');
+        .insert([asignar]).select('id_venta');
    
         if(error){
            console.error('Error al obtener los datos de la tabla:', error.message);
@@ -248,6 +224,17 @@ const getDatosSAR = async (id_sucursal, supabase) => {
        if (exitos != productos.length){
         throw 'Algunos productos no fueron agregados';
        }
+
+       const datosSAR = await getDatosSarSucursal(id_usuario, supabase);
+       if(datosSAR){
+        const crearFacturaSAR = await calculos.postFacturaSar(factura.id_factura, datosSAR.numero_CAI, id_sucursal, supabase);
+        if(!crearFacturaSAR){
+         throw 'Factura SAR no generada';
+        }
+       }
+
+       
+
 
         res.status(200).json({ 
             id_venta: venta[0].id_venta,
@@ -332,46 +319,6 @@ const getDatosSAR = async (id_sucursal, supabase) => {
     }
   }
 
-  const obtenerTotalFactura = async (id_venta, supabase) => {
-    try {
-        const { data: totalfactura, error } = await supabase.from('facturas')
-        .select('total')
-        .eq('id_venta', id_venta)
-        .single();
 
-        if(error){
-            console.error('Error al obtener los datos de la tabla:', error.message);
-            throw new Error('Ocurrió un error al obtener total de facturas.');
-        }
-
-        return totalfactura.total;
-
-    } catch (error) {
-        console.error('Error en el proceso:', error);
-        return 'Error al recuperar total de venta '+error;
-    }
-  }
-
-  const cambiarEstadoVenta = async (id_venta, supabase, estado) => {
-    try {
-        const { data: venta, error } = await supabase.from('Ventas')
-        .update({
-            estado: estado
-        })
-        .select('estado')
-        .eq('id_venta', id_venta);
-
-        if(error){
-            console.error('Error al obtener los datos de la tabla:', error.message);
-            throw new Error('Ocurrió un error al actualizar estado de ventas.');
-        }
-
-        return true;
-
-    } catch (error) {
-        console.error('Error en el proceso:', error);
-        return 'Error al recuperar total de venta '+error;
-    }
-  }
 
 module.exports = { getPrePage, getProductPage, verificarRtn, selectProductoCodigo, postVenta, pagarFacturaEfectivo, eliminarProductoVenta }

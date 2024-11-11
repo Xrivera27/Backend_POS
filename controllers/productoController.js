@@ -54,7 +54,7 @@ const getExtraInfoProduct = async (req, res) => {
         const arrayIdCategorias = await catProdGet(id_producto, supabase);
 
         const { data: info, error } = await supabase.from('producto')
-        .select('precio_mayorista, impuesto, id_unidad_medida, id_proveedor')
+        .select('cantidad_activar_mayorista, precio_mayorista, impuesto, id_unidad_medida, id_proveedor')
         .eq('id_producto', id_producto);
 
         if (!info || info.length === 0) {
@@ -87,6 +87,7 @@ const postProducto = async (req, res) => {
             unidad_medida, 
             impuesto, 
             id_usuario,
+           cantidad_activar_mayorista,
             categorias  
         } = req.body;
 
@@ -96,6 +97,7 @@ const postProducto = async (req, res) => {
         const existencia = await existenciProductCode('producto', 'codigo_producto', codigo_producto, id_empresa_param, supabase);
         if (existencia){
             throw 'Codigo de producto en uso';
+            
         }
 
         const { data: producto, error } = await supabase.from('producto')
@@ -108,6 +110,7 @@ const postProducto = async (req, res) => {
             id_empresa: id_empresa_param,
             precio_unitario: precio_unitario,
             precio_mayorista: precio_mayorista,
+            cantidad_activar_mayorista:cantidad_activar_mayorista,
             codigo_producto: codigo_producto
         }).select('*');
 
@@ -115,7 +118,9 @@ const postProducto = async (req, res) => {
             throw 'Ocurrio un error al guardar producto';
         }
 
-        if (categorias || categorias != [] || categorias.length > 0){
+        console.log(typeof categorias);
+
+        if (categorias && Array.isArray(categorias) && categorias.length > 0){
             const asignarCat =  await catProdAdd(categorias, producto[0].id_producto, supabase);
 
             if (asignarCat != true){
@@ -142,7 +147,8 @@ const patchProducto = async (req, res) => {
         nombre, 
         descripcion, 
         precio_unitario, 
-        precio_mayorista, 
+        precio_mayorista,
+       cantidad_activar_mayorista,
         proveedor, 
         unidad_medida, 
         impuesto, 
@@ -159,6 +165,7 @@ const patchProducto = async (req, res) => {
     if (descripcion || descripcion !== '') updatedFields.descripcion = descripcion;
     if (precio_unitario !== undefined) updatedFields.precio_unitario = precio_unitario;
     if (precio_mayorista !== undefined) updatedFields.precio_mayorista = precio_mayorista;
+    if (cantidad_activar_mayorista !== undefined) updatedFields.cantidad_activar_mayorista =cantidad_activar_mayorista;
     if (codigo_producto || codigo_producto !== '') updatedFields.codigo_producto = codigo_producto;// Asegúrate de tener este dato
 
     // Evitar operación si no hay campos actualizables

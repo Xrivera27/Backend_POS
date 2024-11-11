@@ -9,7 +9,7 @@ const authMiddleware = (req, res, next) => {
   }
 
   try {
-    console.log('Token recibido:', token); // Verifica el token recibido
+    //console.log('Token recibido:', token); // Verifica el token recibido
     const decoded = jwt.verify(token, process.env.JWT_SECRET); // Decodificar el token con la clave secreta
    // console.log('Datos decodificados del token:', decoded); // Verificar datos decodificados
     req.user = decoded; // Guardar el usuario decodificado en req.user

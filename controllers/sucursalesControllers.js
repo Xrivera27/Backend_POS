@@ -1,5 +1,5 @@
 const { insertarRelacion, getSucursalesbyUser, getDatosSarSucursal } = require('../db/sucursalUsuarioSvc.js');
-const { getEmpresaId } = require('../db/empresaSvc.js');
+const { getEmpresaId, empresaUsaSAR } = require('../db/empresaSvc.js');
 const { getRolByUsuario } = require('../db/validaciones.js');
 
 const getSucursales = async (req, res) => {
@@ -90,16 +90,28 @@ const getSucursalesbyUsuarioSummary = async (req, res) => {
 const getSucursalValida = async (req, res) => {
     const id_usuario = req.params.id_usuario;
     const supabase = req.supabase;
+    let mensaje;
     try {
-        const datosSARsucursal = await getDatosSarSucursal(id_usuario, supabase);
 
-        if(!datosSARsucursal){
-            throw 'Error al obtener datos sucursal o datos desactualizados';
+        const empresaSAR = await empresaUsaSAR(id_usuario, supabase);
+        if(!empresaSAR){
+            mensaje = 'La empresa no usa SAR'
         }
-        res.status(200).json({message: 'Datos SAR de sucursal activos'});
+        else{
+            const datosSARsucursal = await getDatosSarSucursal(id_usuario, supabase);
+
+            if(!datosSARsucursal){
+                throw 'Error al obtener datos sucursal o datos desactualizados';
+            }
+            else{
+                mensaje = 'Datos SAR de sucursal activos';
+            }
+        }
+
+        res.status(200).json({message: mensaje});
     } catch (error) {
         console.log(error);
-        res.status(500).json({message: 'Datos SAR de sucursal inactivos'});
+        res.status(500).json({message: error});
     }
 }
 

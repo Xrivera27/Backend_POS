@@ -179,13 +179,12 @@ const calculos = {
                 ISV_18: impuestos.ISV_18,
                 total_ISV: impuestos.total_impuesto,
                 total: subtotalTabla + impuestos.total_impuesto
-            }).select('total_ISV, total');
+            }).select('id_factura, total_ISV, total');
     
             if(error){
                 console.error('Error al insertar factura:', error.message);
                 throw new Error('Ocurrió un error al registrar factura.');
              }
-    
     
              factura[0].sub_total = subtotalTabla;
              return factura[0];
@@ -195,6 +194,29 @@ const calculos = {
             return 'Error '+error;
         }
       },
+
+      async postFacturaSar(id_factura, numero_cai, id_sucursal, supabase) {
+        try {
+            const { error } = await supabase.rpc('crear_factura_sar', {
+                id_factura: id_factura,
+                numero_cai: numero_cai,
+                id_sucursal_param: id_sucursal
+            });
+    
+            if (error) {
+                console.error("Error al ejecutar la función 'crear_factura_sar':", error.message);
+                throw new Error("No se pudo crear la factura SAR. Verifique los datos e intente de nuevo.");
+            }
+    
+            return true;
+    
+        } catch (error) {
+            console.error("Error en postFacturaSar:", error);
+            // Puedes devolver un mensaje de error personalizado o lanzar el error para manejarlo en otra parte del código
+            return false;
+        }
+    },
+    
 
       impuestoProducto(precio_unitario, impuesto){
         let precio;

@@ -34,12 +34,15 @@ const getDatosSarSucursal = async (id_usuario, supabase) => {
             .from('Datos_SAR')
             .select('*')
             .eq('id_sucursal', id_sucursal)
-            .eq('estado', 'Activo');
+            .eq('activo', true)
+            .single();
 
         if (!datosSar || datosSar.length === 0) { 
             console.error('No hay registro válido de la sucursal en SAR');
             throw 'No hay registro válido de la sucursal en SAR';
         }
+
+       // const {error: errorAumentarSar } = await supabase.rpc('aumentar_actual_SAR',{id_sucursal_param: id_sucursal});
 
         if (error) {
             console.error('Ocurrió un error', error);
@@ -52,6 +55,7 @@ const getDatosSarSucursal = async (id_usuario, supabase) => {
         return false;
     }
 };
+
 
 
 const insertarRelacion = async (id_usuario, id_sucursal, supabase) => {

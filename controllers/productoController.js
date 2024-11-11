@@ -54,7 +54,7 @@ const getExtraInfoProduct = async (req, res) => {
         const arrayIdCategorias = await catProdGet(id_producto, supabase);
 
         const { data: info, error } = await supabase.from('producto')
-        .select('precio_mayorista, impuesto, id_unidad_medida, id_proveedor')
+        .select('cantidad_activar_mayorista, precio_mayorista, impuesto, id_unidad_medida, id_proveedor')
         .eq('id_producto', id_producto);
 
         if (!info || info.length === 0) {
@@ -87,7 +87,7 @@ const postProducto = async (req, res) => {
             unidad_medida, 
             impuesto, 
             id_usuario,
-            activar_mayorista,
+           cantidad_activar_mayorista,
             categorias  
         } = req.body;
 
@@ -110,7 +110,7 @@ const postProducto = async (req, res) => {
             id_empresa: id_empresa_param,
             precio_unitario: precio_unitario,
             precio_mayorista: precio_mayorista,
-            cantidad_activar_mayorista: activar_mayorista,
+            cantidad_activar_mayorista:cantidad_activar_mayorista,
             codigo_producto: codigo_producto
         }).select('*');
 
@@ -147,7 +147,8 @@ const patchProducto = async (req, res) => {
         nombre, 
         descripcion, 
         precio_unitario, 
-        precio_mayorista, 
+        precio_mayorista,
+       cantidad_activar_mayorista,
         proveedor, 
         unidad_medida, 
         impuesto, 
@@ -164,6 +165,7 @@ const patchProducto = async (req, res) => {
     if (descripcion || descripcion !== '') updatedFields.descripcion = descripcion;
     if (precio_unitario !== undefined) updatedFields.precio_unitario = precio_unitario;
     if (precio_mayorista !== undefined) updatedFields.precio_mayorista = precio_mayorista;
+    if (cantidad_activar_mayorista !== undefined) updatedFields.cantidad_activar_mayorista =cantidad_activar_mayorista;
     if (codigo_producto || codigo_producto !== '') updatedFields.codigo_producto = codigo_producto;// Asegúrate de tener este dato
 
     // Evitar operación si no hay campos actualizables

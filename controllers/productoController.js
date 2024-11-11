@@ -95,11 +95,10 @@ const postProducto = async (req, res) => {
 
         const existencia = await existenciProductCode('producto', 'codigo_producto', codigo_producto, id_empresa_param, supabase);
         if (existencia){
-            console.log('Entro aqui');
             throw 'Codigo de producto en uso';
             
         }
-console.log('tambien aqui');
+
         const { data: producto, error } = await supabase.from('producto')
         .insert({
             nombre: nombre,
@@ -117,7 +116,9 @@ console.log('tambien aqui');
             throw 'Ocurrio un error al guardar producto';
         }
 
-        if (categorias || categorias != [] || categorias.length > 0){
+        console.log(typeof categorias);
+
+        if (categorias && Array.isArray(categorias) && categorias.length > 0){
             const asignarCat =  await catProdAdd(categorias, producto[0].id_producto, supabase);
 
             if (asignarCat != true){

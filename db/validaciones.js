@@ -2,32 +2,30 @@ const existenciProductCode = async (tabla, campo, atributo, id_empresa, supabase
     try {
         const { data: existencia, error } = await supabase
             .from(tabla)
-            .select(campo)
+            .select('*')
             .eq('id_empresa', id_empresa)
             .eq(campo, atributo)
-            .eq('estado', true)
-            .select('codigo_producto');
+            .eq('estado', true);
 
         if (error) {
-
-            throw 'Error al consultar la base de datos:'; 
+            throw new Error('Error al consultar la base de datos: ' + error.message);
         }
 
-        if( existencia ){
-
+        // Verifica si `existencia` es un array no vacío
+        if (Object.keys(existencia).length > 0 ) {
+            console.log(typeof existencia);
             return true;
-        }
-
-        else {
+        } else {
+            console.log('Producto no encontrado o estado no es true.');
             return false;
         }
 
     } catch (error) {
-        
         console.error('Error en la función validarExistencia:', error);
-        return false;
+        return true;
     }
-}
+};
+
 
 const existeInventario = async (id_producto, id_sucursal, supabase) => {
     try {

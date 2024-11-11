@@ -87,6 +87,7 @@ const postProducto = async (req, res) => {
             unidad_medida, 
             impuesto, 
             id_usuario,
+            activar_mayorista,
             categorias  
         } = req.body;
 
@@ -109,6 +110,7 @@ const postProducto = async (req, res) => {
             id_empresa: id_empresa_param,
             precio_unitario: precio_unitario,
             precio_mayorista: precio_mayorista,
+            cantidad_activar_mayorista: activar_mayorista,
             codigo_producto: codigo_producto
         }).select('*');
 

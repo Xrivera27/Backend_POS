@@ -38,6 +38,10 @@ const ClienteReporte = require('./clientereporteRoutes');
 //ventas y compras
 const ventasRouter = require('./ventasRouter.js');
 
+// Promociones
+const PromocionesP = require('./PromocionesPRoutes');
+
+
 
 //logins
 router.use('/login', loginRoutes);
@@ -52,6 +56,11 @@ router.use('/configempresa', configempresaRoutes);
 router.use('/updateempresa', configureempresaRoutes);
 router.use('/updsar', updatesarRoutes);
 router.use('/Clientes', ClienteReporte);
+
+
+//Promociones
+router.use('/promocionesP', PromocionesP);
+
 
 
 //empresas rutas

@@ -40,6 +40,7 @@ const ventasRouter = require('./ventasRouter.js');
 
 // Promociones
 const PromocionesP = require('./PromocionesPRoutes');
+const PromocionesC = require('./PromocionesCRoutes');
 
 
 
@@ -60,6 +61,7 @@ router.use('/Clientes', ClienteReporte);
 
 //Promociones
 router.use('/promocionesP', PromocionesP);
+router.use('/promocionesC', PromocionesC);
 
 
 

@@ -27,8 +27,10 @@ const calculos = {
             
             await Promise.all(promesas);
             
-
-        const factura = await this.calcularSubtotalVenta(id_venta, subTotalVenta, productos, supabase);
+            const [factura] = await Promise.all([
+                this.postFactura(id_venta, productos, subTotalVenta, supabase),
+                this.calcularSubtotalVenta(id_venta, subTotalVenta, supabase)
+            ]);
         return { exitos, factura }
         }
     
@@ -67,7 +69,7 @@ const calculos = {
     },
       
 
-      async calcularSubtotalVenta(id_venta, subTotalVenta, productos, supabase){
+      async calcularSubtotalVenta(id_venta, subTotalVenta, supabase){
         try {
             const { error } = await supabase.from('Ventas')
             .update({
@@ -80,8 +82,8 @@ const calculos = {
                 throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
             }
     
-           const factura =  await this.postFactura(id_venta, productos, supabase);
-            return factura;
+           
+
     
         } catch (error) {
             console.error('Error en el proceso:', error);
@@ -127,46 +129,45 @@ const calculos = {
         }
       },
     
-      async postFactura(id_venta, productos, supabase){
+      async postFactura(id_venta, productos, subTotalVenta, supabase){
         let arrayProductos = [];
-        let subtotalTabla;
     
-        for (const producto of productos){
+        // for (const producto of productos){
             
-            const { data: productosRegistros, error } = await supabase.from('producto')
+        //     const { data: productosRegistros, error } = await supabase.from('producto')
+        //     .select('id_producto, codigo_producto, impuesto')
+        //     .eq('id_producto', producto.id_producto)
+        //     .single();
+    
+        //     if(error){
+        //         console.error('Error al obtener los datos de la tabla factura:', error.message);
+        //         throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
+        //      }
+        //      productosRegistros.precio_usar = producto.precio_usar;
+        //      productosRegistros.cantidad = producto.cantidad;
+        //      arrayProductos.push(productosRegistros);
+    
+        // }
+
+        const promesas = productos.map(async(producto) => {
+            const { data: productoRegistro, error: errorProducto } = await supabase.from('producto')
             .select('id_producto, codigo_producto, impuesto')
             .eq('id_producto', producto.id_producto)
             .single();
-    
-            if(error){
+
+            if(errorProducto){
                 console.error('Error al obtener los datos de la tabla factura:', error.message);
                 throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
              }
-             productosRegistros.precio_usar = producto.precio_usar;
-             productosRegistros.cantidad = producto.cantidad;
-             arrayProductos.push(productosRegistros);
-    
-        }
-    
+
+             productoRegistro.precio_usar = producto.precio_usar;
+             productoRegistro.cantidad = producto.cantidad;
+             arrayProductos.push(productoRegistro);
+        });
+
+        await Promise.all(promesas);
+
         const impuestos = this.calcularImpuestos(arrayProductos);
-    
-        try {
-            const {data: venta, error } = await supabase.from('Ventas')
-            .select('sub_total')
-            .eq('id_venta', id_venta)
-            .single();
-    
-            if(error){
-                console.error('Error al obtener los datos de la tabla Venta:', error.message);
-                throw new Error('Ocurrió un error al obtener datos de la venta.');
-             }
-    
-              subtotalTabla = venta.sub_total;
-            
-        } catch (error) {
-            console.error('Error en el proceso:', error);
-            return 'Error al aplicar calcular detalles venta '+error;
-        }
     
         try {
 
@@ -180,7 +181,7 @@ const calculos = {
                 ISV_15: impuestos.ISV_15,
                 ISV_18: impuestos.ISV_18,
                 total_ISV: impuestos.total_impuesto,
-                total: subtotalTabla + impuestos.total_impuesto
+                total: subTotalVenta + impuestos.total_impuesto
             }).select('id_factura, total_ISV, total');
     
             if(error){
@@ -188,7 +189,7 @@ const calculos = {
                 throw new Error('Ocurrió un error al registrar factura.');
              }
     
-             factura[0].sub_total = subtotalTabla;
+             factura[0].sub_total = subTotalVenta;
              return factura[0];
     
         } catch (error) {

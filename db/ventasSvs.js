@@ -131,23 +131,6 @@ const calculos = {
     
       async postFactura(id_venta, productos, subTotalVenta, supabase){
         let arrayProductos = [];
-    
-        // for (const producto of productos){
-            
-        //     const { data: productosRegistros, error } = await supabase.from('producto')
-        //     .select('id_producto, codigo_producto, impuesto')
-        //     .eq('id_producto', producto.id_producto)
-        //     .single();
-    
-        //     if(error){
-        //         console.error('Error al obtener los datos de la tabla factura:', error.message);
-        //         throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
-        //      }
-        //      productosRegistros.precio_usar = producto.precio_usar;
-        //      productosRegistros.cantidad = producto.cantidad;
-        //      arrayProductos.push(productosRegistros);
-    
-        // }
 
         const promesas = productos.map(async(producto) => {
             const { data: productoRegistro, error: errorProducto } = await supabase.from('producto')

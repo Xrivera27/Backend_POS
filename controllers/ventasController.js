@@ -76,10 +76,31 @@ const getProductPage = async (req, res) => {
 
         let arrayProductos = [];
 
-        for (const producto of inventarios){
+        // for (const producto of inventarios){
+        //     const { data: p, errorProducto } = await supabase.from('producto')
+        //     .select('id_producto, descripcion, codigo_producto, nombre, precio_unitario, impuesto, estado')
+        //     .eq('id_producto', producto.id_producto)
+        //     .single();
+
+        //     if(errorProducto){
+        //         console.error('Error al obtener los datos de la tabla:', errorProducto.message);
+        //         throw new Error('Ocurrió un error al obtener datos de la tabla inventario.');
+        //     }
+
+        //     if(!p.estado){
+        //         continue;
+        //     }
+
+        //     p.precioImpuesto = calculos.impuestoProducto(p.precio_unitario, p.impuesto);
+
+        //     arrayProductos.push(p);
+        // }
+
+        const promesas = inventarios.map(async(producto) => {
             const { data: p, errorProducto } = await supabase.from('producto')
             .select('id_producto, descripcion, codigo_producto, nombre, precio_unitario, impuesto, estado')
             .eq('id_producto', producto.id_producto)
+      //      .eq('estado', true)
             .single();
 
             if(errorProducto){
@@ -87,14 +108,14 @@ const getProductPage = async (req, res) => {
                 throw new Error('Ocurrió un error al obtener datos de la tabla inventario.');
             }
 
-            if(!p.estado){
-                continue;
-            }
-
+         //   console.log(p);
             p.precioImpuesto = calculos.impuestoProducto(p.precio_unitario, p.impuesto);
 
-            arrayProductos.push(p);
-        }
+
+            return p;
+        });
+
+     arrayProductos =  await Promise.all(promesas);
 
 
         res.status(200).json(

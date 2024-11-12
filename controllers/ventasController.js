@@ -78,7 +78,7 @@ const getProductPage = async (req, res) => {
 
         for (const producto of inventarios){
             const { data: p, errorProducto } = await supabase.from('producto')
-            .select('id_producto, codigo_producto, nombre, precio_unitario, impuesto, estado')
+            .select('id_producto, descripcion, codigo_producto, nombre, precio_unitario, impuesto, estado')
             .eq('id_producto', producto.id_producto)
             .single();
 
@@ -107,7 +107,6 @@ const getProductPage = async (req, res) => {
         });
     }
 }
-
 
   const verificarRtn = async (req, res) => {
     const supabase = req.supabase;

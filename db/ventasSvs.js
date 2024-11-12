@@ -4,27 +4,29 @@ const calculos = {
         let exitos = 0;
         let subTotalVenta = 0;
         try{
-            for (const elementoProducto of productos){
-            const { totalDetalle, precio_usar } = await this.calcularDetalleProducto(elementoProducto, supabase);
-            const { error } = await supabase.from('ventas_detalles')
-            .insert({
-                id_venta: id_venta,
-                id_producto: elementoProducto.id_producto,
-                cantidad: elementoProducto.cantidad,
-                total_detalle: totalDetalle
-            }).select('*');
-    
-            if(error){
-                console.error('Error al obtener los datos de la tabla:', error.message);
-                throw new Error('Ocurrió un error al insertar datos de la tabla detalles ventas.');
-            }
-    
-            subTotalVenta += totalDetalle;
-            elementoProducto.precio_usar = precio_usar;
-    
-            exitos++;
+            const promesas = productos.map(async (elementoProducto) => {
+                const { totalDetalle, precio_usar } = await this.calcularDetalleProducto(elementoProducto, supabase);
+                
+                const { error } = await supabase.from('ventas_detalles')
+                    .insert({
+                        id_venta: id_venta,
+                        id_producto: elementoProducto.id_producto,
+                        cantidad: elementoProducto.cantidad,
+                        total_detalle: totalDetalle
+                    });
             
-        }
+                if (error) {
+                    console.error('Error al obtener los datos de la tabla:', error.message);
+                    throw new Error('Ocurrió un error al insertar datos de la tabla detalles ventas.');
+                }
+            
+                subTotalVenta += totalDetalle;
+                elementoProducto.precio_usar = precio_usar;
+                exitos++;
+            });
+            
+            await Promise.all(promesas);
+            
 
         const factura = await this.calcularSubtotalVenta(id_venta, subTotalVenta, productos, supabase);
         return { exitos, factura }

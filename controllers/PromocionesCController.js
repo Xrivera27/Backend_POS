@@ -48,7 +48,7 @@ const postCategoriaPromocion = async (req, res) => {
     const id_usuario = req.user.id_usuario;
 
     try {
-        const { categoria_id, nombre_promocion, porcentaje_descuento, fecha_inicio, fecha_final } = req.body;
+        const { categoria_id, nombre_promocion, porcentaje_descuento, fecha_inicio, fecha_final, force_create = false } = req.body;
 
         if (!categoria_id || !nombre_promocion || !porcentaje_descuento || !fecha_inicio || !fecha_final) {
             return res.status(400).json({ error: 'Todos los campos son obligatorios' });
@@ -71,7 +71,49 @@ const postCategoriaPromocion = async (req, res) => {
             return res.status(400).json({ error: 'La categoría no pertenece a esta empresa o no existe' });
         }
 
-        // Crear la promoción
+        // Verificar si hay promociones activas que se solapen
+        const { data: promocionesExistentes, error: errorBusqueda } = await supabase
+            .from(TABLA_CATEGORIA_PROMOCION)
+            .select('*')
+            .eq('categoria_producto_Id', categoria_id)
+            .eq('estado', true);
+
+        if (errorBusqueda) throw errorBusqueda;
+
+        // Verificar solapamiento de fechas
+        const nuevaFechaInicio = new Date(fecha_inicio);
+        const nuevaFechaFinal = new Date(fecha_final);
+        
+        const promocionSolapada = promocionesExistentes?.find(promo => {
+            const promoInicio = new Date(promo.fecha_inicio);
+            const promoFinal = new Date(promo.fecha_final);
+            
+            return (
+                (nuevaFechaInicio >= promoInicio && nuevaFechaInicio <= promoFinal) ||
+                (nuevaFechaFinal >= promoInicio && nuevaFechaFinal <= promoFinal) ||
+                (nuevaFechaInicio <= promoInicio && nuevaFechaFinal >= promoFinal)
+            );
+        });
+
+        // Si hay solapamiento y no se fuerza la creación, retornar error
+        if (promocionSolapada && !force_create) {
+            return res.status(409).json({
+                error: 'Hay una promoción activa que coincide con las fechas indicadas',
+                promocion_existente: promocionSolapada
+            });
+        }
+
+        // Si se fuerza la creación, desactivar la promoción existente
+        if (promocionSolapada && force_create) {
+            const { error: errorUpdate } = await supabase
+                .from(TABLA_CATEGORIA_PROMOCION)
+                .update({ estado: false })
+                .eq('id', promocionSolapada.id);
+
+            if (errorUpdate) throw errorUpdate;
+        }
+
+        // Crear la nueva promoción
         const { data: promocion, error } = await supabase
             .from(TABLA_CATEGORIA_PROMOCION)
             .insert({
@@ -87,7 +129,7 @@ const postCategoriaPromocion = async (req, res) => {
 
         if (error) throw error;
 
-        // Obtener la categoría asociada
+        // Obtener la categoría para la respuesta
         const { data: categoria } = await supabase
             .from(TABLA_CATEGORIA)
             .select('*')
@@ -123,7 +165,7 @@ const patchCategoriaPromocion = async (req, res) => {
             return res.status(404).json({ error: 'No se encontró la empresa asociada al usuario' });
         }
 
-        // Verificar que la promoción existe y obtener su categoría
+        // Verificar que la promoción existe
         const { data: promocionExistente, error: errorBusqueda } = await supabase
             .from(TABLA_CATEGORIA_PROMOCION)
             .select('*')
@@ -144,6 +186,38 @@ const patchCategoriaPromocion = async (req, res) => {
 
         if (!categoria) {
             return res.status(403).json({ error: 'No tiene permisos para modificar esta promoción' });
+        }
+
+        // Verificar si hay otras promociones activas que se solapen
+        const { data: promocionesExistentes, error: errorBusquedaOtras } = await supabase
+            .from(TABLA_CATEGORIA_PROMOCION)
+            .select('*')
+            .eq('categoria_producto_Id', promocionExistente.categoria_producto_Id)
+            .eq('estado', true)
+            .neq('id', id); // Excluir la promoción actual
+
+        if (errorBusquedaOtras) throw errorBusquedaOtras;
+
+        // Verificar solapamiento de fechas
+        const nuevaFechaInicio = new Date(fecha_inicio);
+        const nuevaFechaFinal = new Date(fecha_final);
+        
+        const promocionSolapada = promocionesExistentes?.find(promo => {
+            const promoInicio = new Date(promo.fecha_inicio);
+            const promoFinal = new Date(promo.fecha_final);
+            
+            return (
+                (nuevaFechaInicio >= promoInicio && nuevaFechaInicio <= promoFinal) ||
+                (nuevaFechaFinal >= promoInicio && nuevaFechaFinal <= promoFinal) ||
+                (nuevaFechaInicio <= promoInicio && nuevaFechaFinal >= promoFinal)
+            );
+        });
+
+        if (promocionSolapada) {
+            return res.status(409).json({
+                error: 'Las fechas se solapan con otra promoción activa',
+                promocion_existente: promocionSolapada
+            });
         }
 
         // Actualizar la promoción
@@ -205,6 +279,36 @@ const cambiarEstadoCategoriaPromocion = async (req, res) => {
 
         if (!categoria) {
             return res.status(403).json({ error: 'No tiene permisos para modificar esta promoción' });
+        }
+
+        // Si se está activando la promoción, verificar conflictos
+        if (estado === true) {
+            const { data: promocionesActivas } = await supabase
+                .from(TABLA_CATEGORIA_PROMOCION)
+                .select('*')
+                .eq('categoria_producto_Id', promocionExistente.categoria_producto_Id)
+                .eq('estado', true)
+                .neq('id', id);
+
+            const nuevaFechaInicio = new Date(promocionExistente.fecha_inicio);
+            const nuevaFechaFinal = new Date(promocionExistente.fecha_final);
+
+            const hayConflicto = promocionesActivas?.some(promo => {
+                const promoInicio = new Date(promo.fecha_inicio);
+                const promoFinal = new Date(promo.fecha_final);
+                
+                return (
+                    (nuevaFechaInicio >= promoInicio && nuevaFechaInicio <= promoFinal) ||
+                    (nuevaFechaFinal >= promoInicio && nuevaFechaFinal <= promoFinal) ||
+                    (nuevaFechaInicio <= promoInicio && nuevaFechaFinal >= promoFinal)
+                );
+            });
+
+            if (hayConflicto) {
+                return res.status(409).json({
+                    error: 'No se puede activar la promoción porque hay otra promoción activa en las mismas fechas'
+                });
+            }
         }
 
         // Actualizar el estado
@@ -270,7 +374,7 @@ const eliminarCategoriaPromocion = async (req, res) => {
 
         if (error) throw error;
 
-        res.status(200).json({ message: 'Promoción de categoría eliminada correctamente' });
+        res.status(200).json(true);
     } catch (error) {
         console.error('Error completo:', error);
         res.status(500).json({ error: 'Error al eliminar promoción de categoría', details: error.message });

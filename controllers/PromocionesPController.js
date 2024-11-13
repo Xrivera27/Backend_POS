@@ -1,4 +1,3 @@
-
 const TABLA_PROMOCIONES = 'Producto_promocion';
 const TABLA_PRODUCTO = 'producto';
 const { getEmpresaId } = require('../db/EmpresaSvc');
@@ -47,8 +46,9 @@ const postPromocion = async (req, res) => {
     const id_usuario = req.user.id_usuario;
 
     try {
-        const { producto_id, promocion_nombre, porcentaje_descuento, fecha_inicio, fecha_final } = req.body;
+        const { producto_id, promocion_nombre, porcentaje_descuento, fecha_inicio, fecha_final, force_create = false } = req.body;
 
+        // Validación de campos requeridos
         if (!producto_id || !promocion_nombre || !porcentaje_descuento || !fecha_inicio || !fecha_final) {
             return res.status(400).json({ error: 'Todos los campos son obligatorios' });
         }
@@ -58,6 +58,7 @@ const postPromocion = async (req, res) => {
             return res.status(404).json({ error: 'No se encontró la empresa asociada al usuario' });
         }
 
+        // Verificar que el producto pertenece a la empresa
         const { data: productoExiste } = await supabase
             .from('producto')
             .select('id_producto')
@@ -69,6 +70,49 @@ const postPromocion = async (req, res) => {
             return res.status(400).json({ error: 'El producto no pertenece a esta empresa o no existe' });
         }
 
+        // Verificar si hay promociones activas que se solapen
+        const { data: promocionesExistentes, error: errorBusqueda } = await supabase
+            .from(TABLA_PROMOCIONES)
+            .select('*')
+            .eq('producto_Id', producto_id)
+            .eq('estado', true);
+
+        if (errorBusqueda) throw errorBusqueda;
+
+        // Verificar solapamiento de fechas
+        const nuevaFechaInicio = new Date(fecha_inicio);
+        const nuevaFechaFinal = new Date(fecha_final);
+        
+        const promocionSolapada = promocionesExistentes?.find(promo => {
+            const promoInicio = new Date(promo.fecha_inicio);
+            const promoFinal = new Date(promo.fecha_final);
+            
+            return (
+                (nuevaFechaInicio >= promoInicio && nuevaFechaInicio <= promoFinal) ||
+                (nuevaFechaFinal >= promoInicio && nuevaFechaFinal <= promoFinal) ||
+                (nuevaFechaInicio <= promoInicio && nuevaFechaFinal >= promoFinal)
+            );
+        });
+
+        // Si hay solapamiento y no se fuerza la creación, retornar error
+        if (promocionSolapada && !force_create) {
+            return res.status(409).json({
+                error: 'Hay una promoción activa que coincide con las fechas indicadas',
+                promocion_existente: promocionSolapada
+            });
+        }
+
+        // Si se fuerza la creación, desactivar la promoción existente
+        if (promocionSolapada && force_create) {
+            const { error: errorUpdate } = await supabase
+                .from(TABLA_PROMOCIONES)
+                .update({ estado: false })
+                .eq('id', promocionSolapada.id);
+
+            if (errorUpdate) throw errorUpdate;
+        }
+
+        // Crear la nueva promoción
         const { data: promocion, error } = await supabase
             .from(TABLA_PROMOCIONES)
             .insert({
@@ -84,6 +128,7 @@ const postPromocion = async (req, res) => {
 
         if (error) throw error;
 
+        // Obtener información del producto para la respuesta
         const { data: producto } = await supabase
             .from('producto')
             .select('*')
@@ -110,9 +155,6 @@ const patchPromocion = async (req, res) => {
         const { id } = req.params;
         const { promocion_nombre, porcentaje_descuento, fecha_inicio, fecha_final } = req.body;
 
-        console.log('ID de promoción a actualizar:', id); // Para debugging
-        console.log('Datos a actualizar:', req.body); // Para debugging
-
         if (!id) {
             return res.status(400).json({ error: 'ID de promoción no proporcionado' });
         }
@@ -122,7 +164,7 @@ const patchPromocion = async (req, res) => {
             return res.status(404).json({ error: 'No se encontró la empresa asociada al usuario' });
         }
 
-        // Primero verificar que la promoción existe
+        // Verificar que la promoción existe
         const { data: promocionExistente, error: errorBusqueda } = await supabase
             .from(TABLA_PROMOCIONES)
             .select('*, producto:producto_Id(id_empresa)')
@@ -130,7 +172,6 @@ const patchPromocion = async (req, res) => {
             .single();
 
         if (errorBusqueda || !promocionExistente) {
-            console.log('Error o promoción no encontrada:', errorBusqueda);
             return res.status(404).json({ error: 'Promoción no encontrada' });
         }
 
@@ -158,10 +199,7 @@ const patchPromocion = async (req, res) => {
             .eq('id', id)
             .select('*');
 
-        if (errorUpdate) {
-            console.log('Error al actualizar:', errorUpdate);
-            throw errorUpdate;
-        }
+        if (errorUpdate) throw errorUpdate;
 
         res.status(200).json(promocion[0]);
     } catch (error) {
@@ -175,7 +213,7 @@ const cambiarEstadoPromocion = async (req, res) => {
     const id_usuario = req.user.id_usuario;
 
     try {
-        const { id } = req.params;  // Cambiado de id_promocion a id
+        const { id } = req.params;
         const { estado } = req.body;
 
         if (!id) {
@@ -187,7 +225,7 @@ const cambiarEstadoPromocion = async (req, res) => {
             return res.status(404).json({ error: 'No se encontró la empresa asociada al usuario' });
         }
 
-        // Primero verificamos que la promoción exista
+        // Verificar que la promoción existe
         const { data: promocionExistente, error: errorBusqueda } = await supabase
             .from(TABLA_PROMOCIONES)
             .select('*')
@@ -198,19 +236,19 @@ const cambiarEstadoPromocion = async (req, res) => {
             return res.status(404).json({ error: 'Promoción no encontrada' });
         }
 
-        // Verificamos que el producto pertenezca a la empresa
-        const { data: producto, error: errorProducto } = await supabase
+        // Verificar que el producto pertenece a la empresa
+        const { data: producto } = await supabase
             .from('producto')
             .select('id_producto')
             .eq('id_producto', promocionExistente.producto_Id)
             .eq('id_empresa', id_empresa)
             .single();
 
-        if (errorProducto || !producto) {
+        if (!producto) {
             return res.status(403).json({ error: 'No tiene permisos para modificar esta promoción' });
         }
 
-        // Actualizamos el estado
+        // Actualizar el estado
         const { data: promocionActualizada, error } = await supabase
             .from(TABLA_PROMOCIONES)
             .update({ estado: estado })
@@ -231,9 +269,7 @@ const eliminarPromocion = async (req, res) => {
     const id_usuario = req.user.id_usuario;
 
     try {
-        const { id } = req.params; // Obtenemos el id de los parámetros
-
-        console.log('Intentando eliminar promoción:', id); // Para debugging
+        const { id } = req.params;
 
         if (!id) {
             return res.status(400).json({ error: 'ID de promoción no proporcionado' });
@@ -244,7 +280,7 @@ const eliminarPromocion = async (req, res) => {
             return res.status(404).json({ error: 'No se encontró la empresa asociada al usuario' });
         }
 
-        // Primero verificamos que la promoción exista y pertenezca a un producto de la empresa
+        // Verificar que la promoción existe y pertenece a un producto de la empresa
         const { data: promocionExistente } = await supabase
             .from(TABLA_PROMOCIONES)
             .select('*, producto:producto_Id(id_producto, id_empresa)')
@@ -267,7 +303,7 @@ const eliminarPromocion = async (req, res) => {
             return res.status(403).json({ error: 'No tiene permisos para eliminar esta promoción' });
         }
 
-        // Si todo está bien, procedemos a eliminar
+        // Eliminar la promoción
         const { error } = await supabase
             .from(TABLA_PROMOCIONES)
             .delete()
@@ -275,13 +311,12 @@ const eliminarPromocion = async (req, res) => {
 
         if (error) throw error;
 
-        res.status(200).json({ message: 'Promoción eliminada correctamente' });
+        res.status(200).json(true);
     } catch (error) {
         console.error('Error completo:', error);
         res.status(500).json({ error: 'Error al eliminar promoción', details: error.message });
     }
 };
-
 
 const getProductosEmpresa = async (req, res) => {
     const supabase = req.supabase;

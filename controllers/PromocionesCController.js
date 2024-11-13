@@ -1,8 +1,8 @@
-const TABLA_PROMOCIONES = 'Producto_promocion';
-const TABLA_PRODUCTO = 'producto';
+const TABLA_CATEGORIA_PROMOCION = 'categoria_promocion';
+const TABLA_CATEGORIA = 'categoria_producto';
 const { getEmpresaId } = require('../db/EmpresaSvc');
 
-const getPromocionesEmpresa = async (req, res) => {
+const getCategoriasPromocionEmpresa = async (req, res) => {
     const supabase = req.supabase;
     const id_usuario = req.user.id_usuario;
 
@@ -12,44 +12,45 @@ const getPromocionesEmpresa = async (req, res) => {
             return res.status(404).json({ error: 'No se encontró la empresa asociada al usuario' });
         }
 
-        const { data: productos, error: prodError } = await supabase
-            .from('producto')
+        // Obtener categorías de la empresa
+        const { data: categorias, error: catError } = await supabase
+            .from(TABLA_CATEGORIA)
             .select('*')
             .eq('id_empresa', id_empresa);
 
-        if (prodError) throw prodError;
-        if (!productos?.length) return res.status(200).json([]);
+        if (catError) throw catError;
+        if (!categorias?.length) return res.status(200).json([]);
 
-        const productosIds = productos.map(p => p.id_producto);
+        const categoriasIds = categorias.map(c => c.id_categoria);
 
+        // Obtener promociones de categorías
         const { data: promociones, error: promError } = await supabase
-            .from(TABLA_PROMOCIONES)
+            .from(TABLA_CATEGORIA_PROMOCION)
             .select('*')
-            .in('producto_Id', productosIds);
+            .in('categoria_producto_Id', categoriasIds);
 
         if (promError) throw promError;
 
-        const promocionesConProductos = promociones.map(promocion => ({
+        const promocionesConCategorias = promociones.map(promocion => ({
             ...promocion,
-            producto: productos.find(p => p.id_producto === promocion.producto_Id)
+            categoria: categorias.find(c => c.id_categoria === promocion.categoria_producto_Id)
         }));
 
-        res.status(200).json(promocionesConProductos);
+        res.status(200).json(promocionesConCategorias);
     } catch (error) {
         console.error('Error completo:', error);
-        res.status(500).json({ error: 'Error al obtener promociones', details: error.message });
+        res.status(500).json({ error: 'Error al obtener promociones de categorías', details: error.message });
     }
 };
 
-const postPromocion = async (req, res) => {
+const postCategoriaPromocion = async (req, res) => {
     const supabase = req.supabase;
     const id_usuario = req.user.id_usuario;
 
     try {
-        const { producto_id, promocion_nombre, porcentaje_descuento, fecha_inicio, fecha_final, force_create = false } = req.body;
+        const { categoria_id, nombre_promocion, porcentaje_descuento, fecha_inicio, fecha_final, force_create = false } = req.body;
 
-        // Validación de campos requeridos
-        if (!producto_id || !promocion_nombre || !porcentaje_descuento || !fecha_inicio || !fecha_final) {
+        if (!categoria_id || !nombre_promocion || !porcentaje_descuento || !fecha_inicio || !fecha_final) {
             return res.status(400).json({ error: 'Todos los campos son obligatorios' });
         }
 
@@ -58,23 +59,23 @@ const postPromocion = async (req, res) => {
             return res.status(404).json({ error: 'No se encontró la empresa asociada al usuario' });
         }
 
-        // Verificar que el producto pertenece a la empresa
-        const { data: productoExiste } = await supabase
-            .from('producto')
-            .select('id_producto')
-            .eq('id_producto', producto_id)
+        // Verificar que la categoría pertenece a la empresa
+        const { data: categoriaExiste } = await supabase
+            .from(TABLA_CATEGORIA)
+            .select('id_categoria')
+            .eq('id_categoria', categoria_id)
             .eq('id_empresa', id_empresa)
             .single();
 
-        if (!productoExiste) {
-            return res.status(400).json({ error: 'El producto no pertenece a esta empresa o no existe' });
+        if (!categoriaExiste) {
+            return res.status(400).json({ error: 'La categoría no pertenece a esta empresa o no existe' });
         }
 
         // Verificar si hay promociones activas que se solapen
         const { data: promocionesExistentes, error: errorBusqueda } = await supabase
-            .from(TABLA_PROMOCIONES)
+            .from(TABLA_CATEGORIA_PROMOCION)
             .select('*')
-            .eq('producto_Id', producto_id)
+            .eq('categoria_producto_Id', categoria_id)
             .eq('estado', true);
 
         if (errorBusqueda) throw errorBusqueda;
@@ -105,7 +106,7 @@ const postPromocion = async (req, res) => {
         // Si se fuerza la creación, desactivar la promoción existente
         if (promocionSolapada && force_create) {
             const { error: errorUpdate } = await supabase
-                .from(TABLA_PROMOCIONES)
+                .from(TABLA_CATEGORIA_PROMOCION)
                 .update({ estado: false })
                 .eq('id', promocionSolapada.id);
 
@@ -114,10 +115,10 @@ const postPromocion = async (req, res) => {
 
         // Crear la nueva promoción
         const { data: promocion, error } = await supabase
-            .from(TABLA_PROMOCIONES)
+            .from(TABLA_CATEGORIA_PROMOCION)
             .insert({
-                producto_Id: producto_id,
-                promocion_nombre,
+                categoria_producto_Id: categoria_id,
+                nombre_promocion,
                 porcentaje_descuento,
                 fecha_inicio,
                 fecha_final,
@@ -128,32 +129,32 @@ const postPromocion = async (req, res) => {
 
         if (error) throw error;
 
-        // Obtener información del producto para la respuesta
-        const { data: producto } = await supabase
-            .from('producto')
+        // Obtener la categoría para la respuesta
+        const { data: categoria } = await supabase
+            .from(TABLA_CATEGORIA)
             .select('*')
-            .eq('id_producto', producto_id)
+            .eq('id_categoria', categoria_id)
             .single();
 
-        const promocionConProducto = {
+        const promocionConCategoria = {
             ...promocion[0],
-            producto
+            categoria
         };
 
-        res.status(200).json([promocionConProducto]);
+        res.status(200).json([promocionConCategoria]);
     } catch (error) {
         console.error('Error completo:', error);
-        res.status(500).json({ error: 'Error al crear promoción', details: error.message });
+        res.status(500).json({ error: 'Error al crear promoción de categoría', details: error.message });
     }
 };
 
-const patchPromocion = async (req, res) => {
+const patchCategoriaPromocion = async (req, res) => {
     const supabase = req.supabase;
     const id_usuario = req.user.id_usuario;
 
     try {
         const { id } = req.params;
-        const { promocion_nombre, porcentaje_descuento, fecha_inicio, fecha_final } = req.body;
+        const { nombre_promocion, porcentaje_descuento, fecha_inicio, fecha_final } = req.body;
 
         if (!id) {
             return res.status(400).json({ error: 'ID de promoción no proporcionado' });
@@ -166,8 +167,8 @@ const patchPromocion = async (req, res) => {
 
         // Verificar que la promoción existe
         const { data: promocionExistente, error: errorBusqueda } = await supabase
-            .from(TABLA_PROMOCIONES)
-            .select('*, producto:producto_Id(id_empresa)')
+            .from(TABLA_CATEGORIA_PROMOCION)
+            .select('*')
             .eq('id', id)
             .single();
 
@@ -175,23 +176,55 @@ const patchPromocion = async (req, res) => {
             return res.status(404).json({ error: 'Promoción no encontrada' });
         }
 
-        // Verificar que el producto pertenece a la empresa del usuario
-        const { data: producto } = await supabase
-            .from('producto')
-            .select('id_producto')
-            .eq('id_producto', promocionExistente.producto_Id)
+        // Verificar que la categoría pertenece a la empresa
+        const { data: categoria } = await supabase
+            .from(TABLA_CATEGORIA)
+            .select('id_categoria')
+            .eq('id_categoria', promocionExistente.categoria_producto_Id)
             .eq('id_empresa', id_empresa)
             .single();
 
-        if (!producto) {
+        if (!categoria) {
             return res.status(403).json({ error: 'No tiene permisos para modificar esta promoción' });
+        }
+
+        // Verificar si hay otras promociones activas que se solapen
+        const { data: promocionesExistentes, error: errorBusquedaOtras } = await supabase
+            .from(TABLA_CATEGORIA_PROMOCION)
+            .select('*')
+            .eq('categoria_producto_Id', promocionExistente.categoria_producto_Id)
+            .eq('estado', true)
+            .neq('id', id); // Excluir la promoción actual
+
+        if (errorBusquedaOtras) throw errorBusquedaOtras;
+
+        // Verificar solapamiento de fechas
+        const nuevaFechaInicio = new Date(fecha_inicio);
+        const nuevaFechaFinal = new Date(fecha_final);
+        
+        const promocionSolapada = promocionesExistentes?.find(promo => {
+            const promoInicio = new Date(promo.fecha_inicio);
+            const promoFinal = new Date(promo.fecha_final);
+            
+            return (
+                (nuevaFechaInicio >= promoInicio && nuevaFechaInicio <= promoFinal) ||
+                (nuevaFechaFinal >= promoInicio && nuevaFechaFinal <= promoFinal) ||
+                (nuevaFechaInicio <= promoInicio && nuevaFechaFinal >= promoFinal)
+            );
+        });
+
+        if (promocionSolapada) {
+            return res.status(409).json({
+                error: 'Las fechas se solapan con otra promoción activa',
+                promocion_existente: promocionSolapada
+            });
         }
 
         // Actualizar la promoción
         const { data: promocion, error: errorUpdate } = await supabase
-            .from(TABLA_PROMOCIONES)
+            .from(TABLA_CATEGORIA_PROMOCION)
             .update({
-                promocion_nombre,
+                nombre_promocion,
                 porcentaje_descuento,
                 fecha_inicio,
                 fecha_final
@@ -204,11 +237,11 @@ const patchPromocion = async (req, res) => {
         res.status(200).json(promocion[0]);
     } catch (error) {
         console.error('Error completo:', error);
-        res.status(500).json({ error: 'Error al actualizar promoción', details: error.message });
+        res.status(500).json({ error: 'Error al actualizar promoción de categoría', details: error.message });
     }
 };
 
-const cambiarEstadoPromocion = async (req, res) => {
+const cambiarEstadoCategoriaPromocion = async (req, res) => {
     const supabase = req.supabase;
     const id_usuario = req.user.id_usuario;
 
@@ -226,45 +259,75 @@ const cambiarEstadoPromocion = async (req, res) => {
         }
 
         // Verificar que la promoción existe
-        const { data: promocionExistente, error: errorBusqueda } = await supabase
-            .from(TABLA_PROMOCIONES)
+        const { data: promocionExistente } = await supabase
+            .from(TABLA_CATEGORIA_PROMOCION)
             .select('*')
             .eq('id', id)
             .single();
 
-        if (errorBusqueda || !promocionExistente) {
+        if (!promocionExistente) {
             return res.status(404).json({ error: 'Promoción no encontrada' });
         }
 
-        // Verificar que el producto pertenece a la empresa
-        const { data: producto } = await supabase
-            .from('producto')
-            .select('id_producto')
-            .eq('id_producto', promocionExistente.producto_Id)
+        // Verificar que la categoría pertenece a la empresa
+        const { data: categoria } = await supabase
+            .from(TABLA_CATEGORIA)
+            .select('id_categoria')
+            .eq('id_categoria', promocionExistente.categoria_producto_Id)
             .eq('id_empresa', id_empresa)
             .single();
 
-        if (!producto) {
+        if (!categoria) {
             return res.status(403).json({ error: 'No tiene permisos para modificar esta promoción' });
         }
 
+        // Si se está activando la promoción, verificar conflictos
+        if (estado === true) {
+            const { data: promocionesActivas } = await supabase
+                .from(TABLA_CATEGORIA_PROMOCION)
+                .select('*')
+                .eq('categoria_producto_Id', promocionExistente.categoria_producto_Id)
+                .eq('estado', true)
+                .neq('id', id);
+
+            const nuevaFechaInicio = new Date(promocionExistente.fecha_inicio);
+            const nuevaFechaFinal = new Date(promocionExistente.fecha_final);
+
+            const hayConflicto = promocionesActivas?.some(promo => {
+                const promoInicio = new Date(promo.fecha_inicio);
+                const promoFinal = new Date(promo.fecha_final);
+                
+                return (
+                    (nuevaFechaInicio >= promoInicio && nuevaFechaInicio <= promoFinal) ||
+                    (nuevaFechaFinal >= promoInicio && nuevaFechaFinal <= promoFinal) ||
+                    (nuevaFechaInicio <= promoInicio && nuevaFechaFinal >= promoFinal)
+                );
+            });
+
+            if (hayConflicto) {
+                return res.status(409).json({
+                    error: 'No se puede activar la promoción porque hay otra promoción activa en las mismas fechas'
+                });
+            }
+        }
+
         // Actualizar el estado
-        const { data: promocionActualizada, error } = await supabase
-            .from(TABLA_PROMOCIONES)
-            .update({ estado: estado })
+        const { data: promocion, error } = await supabase
+            .from(TABLA_CATEGORIA_PROMOCION)
+            .update({ estado })
             .eq('id', id)
             .select('*');
 
         if (error) throw error;
 
-        res.status(200).json(promocionActualizada[0]);
+        res.status(200).json(promocion[0]);
     } catch (error) {
         console.error('Error completo:', error);
         res.status(500).json({ error: 'Error al cambiar estado de la promoción', details: error.message });
     }
 };
 
-const eliminarPromocion = async (req, res) => {
+const eliminarCategoriaPromocion = async (req, res) => {
     const supabase = req.supabase;
     const id_usuario = req.user.id_usuario;
 
@@ -280,10 +343,10 @@ const eliminarPromocion = async (req, res) => {
             return res.status(404).json({ error: 'No se encontró la empresa asociada al usuario' });
         }
 
-        // Verificar que la promoción existe y pertenece a un producto de la empresa
+        // Verificar que la promoción existe
         const { data: promocionExistente } = await supabase
-            .from(TABLA_PROMOCIONES)
-            .select('*, producto:producto_Id(id_producto, id_empresa)')
+            .from(TABLA_CATEGORIA_PROMOCION)
+            .select('*')
             .eq('id', id)
             .single();
 
@@ -291,21 +354,21 @@ const eliminarPromocion = async (req, res) => {
             return res.status(404).json({ error: 'Promoción no encontrada' });
         }
 
-        // Verificar que el producto pertenece a la empresa
-        const { data: producto } = await supabase
-            .from('producto')
-            .select('id_producto')
-            .eq('id_producto', promocionExistente.producto_Id)
+        // Verificar que la categoría pertenece a la empresa
+        const { data: categoria } = await supabase
+            .from(TABLA_CATEGORIA)
+            .select('id_categoria')
+            .eq('id_categoria', promocionExistente.categoria_producto_Id)
             .eq('id_empresa', id_empresa)
             .single();
 
-        if (!producto) {
+        if (!categoria) {
             return res.status(403).json({ error: 'No tiene permisos para eliminar esta promoción' });
         }
 
         // Eliminar la promoción
         const { error } = await supabase
-            .from(TABLA_PROMOCIONES)
+            .from(TABLA_CATEGORIA_PROMOCION)
             .delete()
             .eq('id', id);
 
@@ -314,11 +377,11 @@ const eliminarPromocion = async (req, res) => {
         res.status(200).json(true);
     } catch (error) {
         console.error('Error completo:', error);
-        res.status(500).json({ error: 'Error al eliminar promoción', details: error.message });
+        res.status(500).json({ error: 'Error al eliminar promoción de categoría', details: error.message });
     }
 };
 
-const getProductosEmpresa = async (req, res) => {
+const getCategoriasEmpresa = async (req, res) => {
     const supabase = req.supabase;
     const id_usuario = req.user.id_usuario;
 
@@ -328,26 +391,26 @@ const getProductosEmpresa = async (req, res) => {
             return res.status(404).json({ error: 'No se encontró la empresa asociada al usuario' });
         }
 
-        const { data: productos, error } = await supabase
-            .from('producto')
-            .select('id_producto, nombre')
+        const { data: categorias, error } = await supabase
+            .from(TABLA_CATEGORIA)
+            .select('id_categoria, nombre_categoria')
             .eq('id_empresa', id_empresa)
             .eq('estado', true);
 
         if (error) throw error;
 
-        res.status(200).json(productos);
+        res.status(200).json(categorias);
     } catch (error) {
         console.error('Error completo:', error);
-        res.status(500).json({ error: 'Error al obtener productos', details: error.message });
+        res.status(500).json({ error: 'Error al obtener categorías', details: error.message });
     }
 };
 
 module.exports = {
-    getPromocionesEmpresa,
-    postPromocion,
-    patchPromocion,
-    cambiarEstadoPromocion,
-    eliminarPromocion,
-    getProductosEmpresa
+    getCategoriasPromocionEmpresa,
+    postCategoriaPromocion,
+    patchCategoriaPromocion,
+    cambiarEstadoCategoriaPromocion,
+    eliminarCategoriaPromocion,
+    getCategoriasEmpresa
 };

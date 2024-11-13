@@ -107,12 +107,15 @@ const calculos = {
             }
     
             if (
-                producto.precio_mayorista > 0 && 
+                (producto.precio_mayorista > 0 && 
                 producto.precio_mayorista !== null && 
-                producto.precio_mayorista !== undefined &&
-                producto.cantidad_activar_mayorista <= elementoProducto.cantidad
+                producto.precio_mayorista !== undefined) &&
+                (   producto.cantidad_activar_mayorista !== null &&
+                    producto.cantidad_activar_mayorista !== undefined &&
+                    producto.cantidad_activar_mayorista <= elementoProducto.cantidad)
             )
                 {
+                    console.log(producto.precio_mayorista);
                     totalDetalle = producto.precio_mayorista * elementoProducto.cantidad;
                     precio_usar = producto.precio_mayorista;
             }

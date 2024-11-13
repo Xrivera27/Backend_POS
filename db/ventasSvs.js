@@ -224,6 +224,27 @@ const calculos = {
 
         return precio;
       },
+
+      impuestoProductoSimple(precio_unitario, impuesto){
+        let precio;
+        switch(impuesto){
+            case 1 || '1':
+                precio = precio_unitario + (precio_unitario * 0.15);
+            break;
+
+            case 2 || '2':
+                precio = precio_unitario + (precio_unitario * 0.15);
+            break;
+
+            case 3 || '3':
+                precio = precio_unitario;
+            break;
+
+            default: console.log(`Impuesto: ${producto.impuesto} de producto ${producto.codigo_producto} no encontrado`);
+        }
+
+        return precio;
+      },
     
       calcularImpuestos(productos){
         const objetoImpuestos = {

@@ -90,7 +90,6 @@ const getProductPage = async (req, res) => {
             }
 
         if(p){
-          
             p.precioImpuesto = calculos.impuestoProducto(p.precio_unitario, p.impuesto);
             return p;
         }

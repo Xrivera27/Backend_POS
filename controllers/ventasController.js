@@ -59,6 +59,7 @@ const getPrePage = async (req, res) => {
 
 const getProductPage = async (req, res) => {
     const supabase = req.supabase;
+  //  let cantidadNull = 0;
     try {
         const id_usuario = req.params.id_usuario;
         const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
@@ -79,9 +80,9 @@ const getProductPage = async (req, res) => {
         const promesas = inventarios.map(async(producto) => {
 
             const { data: p, errorProducto } = await supabase.from('producto')
-            .select('id_producto, descripcion, codigo_producto, nombre, precio_unitario, impuesto, estado')
+            .select('id_producto, codigo_producto, nombre, descripcion, precio_unitario, precio_mayorista, cantidad_activar_mayorista, impuesto')
             .eq('id_producto', producto.id_producto)
-           .eq('estado', true)
+            .eq('estado', true)
             .single();
 
             if(errorProducto){
@@ -90,6 +91,14 @@ const getProductPage = async (req, res) => {
             }
 
         if(p){
+            if((p.precio_mayorista && p.cantidad_activar_mayorista) && 
+            (p.precio_mayorista > 0 && p.cantidad_activar_mayorista > 0) ){
+                p.precioImpuestoMayorista = calculos.impuestoProducto(p.precio_mayorista, p.impuesto);
+            }
+            else{
+                p.precioImpuestoMayorista = 0;
+                p.cantidad_activar_mayorista = 0;
+            }
             p.precioImpuesto = calculos.impuestoProducto(p.precio_unitario, p.impuesto);
             return p;
         }
@@ -97,8 +106,11 @@ const getProductPage = async (req, res) => {
         return null;
             
         });
+        
 
      arrayProductos =  (await Promise.all(promesas)).filter(Boolean);
+   //  console.log(cantidadNull);
+   //  console.log(arrayProductos);
 
 
         res.status(200).json(

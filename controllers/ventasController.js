@@ -202,6 +202,98 @@ const getProductPage = async (req, res) => {
     }
   }
 
+  const guardarVenta = async (req, res) => {
+    try {
+        const id_usuario = req.params.id_usuario;
+        const supabase = req.supabase;
+        const { nombre_completo } = req.body;
+
+        const { data: compra_guardada, error: errorCompra } = await supabase
+            .from('compras_guardada')
+            .insert({ nombre_cliente: nombre_completo })
+            .select('id_compra_guardada');
+
+        if (errorCompra) {
+            console.error("Error al guardar la compra:", errorCompra);
+            return res.status(500).json({
+                error: "Error al guardar la compra. Por favor, inténtelo nuevamente más tarde."
+            });
+        }
+
+        const { data: inventario_roll_back ,error: errorInventario } = await supabase.from('inventario_roll_back')
+        .update({
+            id_compra_guardada: compra_guardada[0].id_compra_guardada
+        })
+        .eq('id_usuario', id_usuario)
+        .is('id_compra_guardada', null)
+        .select('*');
+
+        if(!inventario_roll_back){
+            console.error("Error al guardar inventario rollback:", errorInventario);
+            throw "No hay compras registradas para este usuario aun.";
+        }
+
+        if (errorInventario) {
+            console.error("Error al guardar inventario rollback:", errorInventario);
+            throw "Error al guardar inventario roll back. Por favor, inténtelo nuevamente más tarde.";
+        }
+
+        return res.status(200).json({
+            mensaje: "Venta guardada exitosamente.",
+            id_compra_guardada: compra_guardada[0].id_compra_guardada,
+        });
+
+    } catch (error) {
+        console.error("Error inesperado:", error);
+        return res.status(500).json({
+            error: `Ha ocurrido un error inesperado: ${error}`
+        });
+    }
+}
+
+const getVentasGuardadas = async (req, res) => {
+    try {
+        const supabase = req.supabase;
+        const id_usuario = req.params.id_usuario;
+        
+        const { data: inventario_roll_back, error: errorInventario } = await supabase.from('inventario_roll_back')
+        .select('id_inventario_roll_back, id_compra_guardada')
+        .eq('id_usuario', id_usuario)
+        .not('id_compra_guardada','is',null);
+
+        if (errorInventario) {
+            console.error("Error al obtener inventario rollback:", errorInventario);
+            throw "Error al obtener roll back. Por favor, inténtelo nuevamente más tarde.";
+        }
+
+        const promesas = inventario_roll_back.map(async(inventario) => {
+            const { data: compras, error: errorCompras } = await supabase.from('compras_guardada')
+            .select('id_compra_guardada, nombre_cliente')
+            .eq('id_compra_guardada', inventario.id_compra_guardada)
+            .single();
+
+            if (errorCompras) {
+                console.error("Error al obtener ventas guardadas:", errorCompras);
+                throw "Error al guardar obtener ventas guardadas. Por favor, inténtelo nuevamente más tarde.";
+            }
+            
+            return compras;
+        });
+
+        const compras = await Promise.all(promesas);
+
+        res.status(200).json(compras);
+
+        
+    } catch (error) {
+        res.status(500).json({
+            error: error
+        })
+    }
+    
+
+}
+
   const postVenta = async (req, res) => {
     const supabase = req.supabase;
     const {
@@ -336,4 +428,4 @@ const getProductPage = async (req, res) => {
 
 
 
-module.exports = { getPrePage, getProductPage, verificarRtn, selectProductoCodigo, postVenta, pagarFacturaEfectivo, eliminarProductoVenta }
+module.exports = { getPrePage, getProductPage, verificarRtn, selectProductoCodigo, guardarVenta, getVentasGuardadas, postVenta, pagarFacturaEfectivo, eliminarProductoVenta }

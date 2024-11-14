@@ -116,6 +116,7 @@ const verificarInventarioRollBack = async (id_inventario, id_usuario, supabase) 
             .select('id_inventario_roll_back, cantidad')
             .eq('id_inventario', id_inventario)
             .eq('id_usuario', id_usuario)
+            .is('id_compra_guardada', null)
             .single();
 
         if (error && error.code !== 'PGRST116') { // Ignora el error cuando no se encuentran registros
@@ -172,7 +173,7 @@ const eliminarInventarioRollBack = async (id_usuario, supabase) => {
             .from('inventario_roll_back')
             .delete()
             .eq('id_usuario', id_usuario)
-            .eq('abierto', true);
+            .is('id_compra_guardada', null);
 
         if (error) {
             console.error(`Error al eliminar los registros de inventario para el usuario ${id_usuario}:`, error);
@@ -196,7 +197,7 @@ const eliminarInventarioRollBackEsp = async (inventario, id_inventario_roll_back
             .from('inventario_roll_back')
             .delete()
             .eq('id_inventario_roll_back', id_inventario_roll_back)
-            .eq('abierto', true);
+            .is('id_compra_guardada', null);
 
 
         if (error || errorGet) {

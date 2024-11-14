@@ -48,6 +48,7 @@ const getProductosUnidad = async (req, res) => {
         const { data: productos, error } = await supabase
         .from('producto')
         .select('codigo_producto, nombre')
+        .eq('estado', true)
         .eq('id_unidad_medida', id_unidad);
   
       if (error) {
@@ -70,7 +71,8 @@ const getTotalUnidadporProducto = async (req, res) => {
   
       const { count, error } = await supabase
         .from('producto')
-        .select('*', { count: "exact", head: true }) // head: true para que solo cuente y no traiga datos
+        .select('*', { count: "exact", head: true })
+        .eq('estado', true)
         .eq('id_unidad_medida', id_unidad);
   
       if (error) {

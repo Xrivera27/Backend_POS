@@ -282,12 +282,16 @@ const getVentasGuardadas = async (req, res) => {
 
         const compras = await Promise.all(promesas);
 
-        res.status(200).json(compras);
+        const comprasUnicas = Array.from(
+            new Map(compras.map(compra => [compra.id_compra_guardada, compra])).values()
+        );
+
+        res.status(200).json(comprasUnicas);
 
         
     } catch (error) {
         res.status(500).json({
-            error: error
+            error: error.message
         })
     }
     

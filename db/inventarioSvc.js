@@ -22,6 +22,7 @@ const getInventario = async (id_producto, id_sucursal, supabase) => {
     }
 };
 
+
 const postFirstinventario = async (id_producto, id_sucursal, supabase) => {
     try {
         const { data: inventario, error } = supabase

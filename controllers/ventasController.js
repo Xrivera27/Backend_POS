@@ -295,7 +295,49 @@ const getVentasGuardadas = async (req, res) => {
         })
     }
     
+}
 
+const recuperarVentaGuardada = async (req, res) => {
+    try {
+        const supabase = req.supabase;
+        const id_compra_guardada = req.params.id_compra_guardada;
+        const { data: inventario_roll_back, error: inventarioError } = await supabase
+        .from('inventario_roll_back')
+        .select('id_inventario, cantidad')
+        .eq('id_compra_guardada', id_compra_guardada);
+
+        if (inventarioError) {
+            console.error("Error al obtener inventario rollback: ", inventarioError);
+            throw "Error al obtener roll back. Por favor, inténtelo nuevamente más tarde.";
+        }
+
+        if (inventario_roll_back.length < 1) {
+            console.error("Error al obtener inventario rollback: ", 'No hay un carrito con ese ID');
+            throw "Error al obtener roll back. Por favor, inténtelo nuevamente más tarde.";
+        }
+
+        const promesas = inventario_roll_back.map(async(inventario) => {
+            const { data: codigo_producto, error: errorProducto } = await supabase
+            .rpc('obtenercodigoproducto', {id_inventario_param: inventario.id_inventario});
+
+            if (errorProducto) {
+                console.error("Error al obtener productos: ", errorProducto);
+                throw "Error al obtener codigo de producto. Por favor, inténtelo nuevamente más tarde.";
+            }
+            const cantidad = inventario.cantidad;
+            return {codigo_producto, cantidad};
+        });
+
+        const productos = await Promise.all(promesas);
+
+        res.status(200).json(productos);
+
+
+    } catch (error) {
+                res.status(500).json({
+            error: error
+        })
+    }
 }
 
   const postVenta = async (req, res) => {
@@ -432,4 +474,4 @@ const getVentasGuardadas = async (req, res) => {
 
 
 
-module.exports = { getPrePage, getProductPage, verificarRtn, selectProductoCodigo, guardarVenta, getVentasGuardadas, postVenta, pagarFacturaEfectivo, eliminarProductoVenta }
+module.exports = { getPrePage, getProductPage, verificarRtn, selectProductoCodigo, guardarVenta, getVentasGuardadas, recuperarVentaGuardada, postVenta, pagarFacturaEfectivo, eliminarProductoVenta }

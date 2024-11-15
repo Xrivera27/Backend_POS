@@ -8,7 +8,9 @@ const {
     addInventarioRollBack, 
     verificarInventarioRollBack, 
     eliminarInventarioRollBack,
-    eliminarInventarioRollBackEsp
+    eliminarInventarioRollBackEsp,
+    setNullRollBack,
+    eliminarCompraGuardada
 } = require('../db/inventarioSvc.js');
 const calculos = require('../db/ventasSvs.js');
 
@@ -327,6 +329,10 @@ const recuperarVentaGuardada = async (req, res) => {
             const cantidad = inventario.cantidad;
             return {codigo_producto, cantidad};
         });
+
+        await setNullRollBack(id_compra_guardada, supabase);
+        await eliminarCompraGuardada(id_compra_guardada, supabase);
+        
 
         const productos = await Promise.all(promesas);
 

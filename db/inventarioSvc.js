@@ -213,6 +213,46 @@ const eliminarInventarioRollBackEsp = async (inventario, id_inventario_roll_back
     }
 }
 
+const eliminarCompraGuardada = async (id_compra_guardada, supabase) => {
+    try {
+        
+        const { error } = await supabase.from('compras_guardada')
+        .delete()
+        .eq('id_compra_guardada', id_compra_guardada);
+        
+        if (error) {
+            console.error(`Error al eliminar los registros de compra guardada con el id: ${id_compra_guardada}:`, error);
+            throw 'Ocurrio un error, por favor intente de nuevo';
+        } else {
+            return true;
+        }
+    } catch (error) {
+        console.error("Error en el proceso de eliminación:", error);
+        return false;
+    }
+}
+
+const setNullRollBack = async (id_compra_guardada, supabase) => {
+    try {
+        
+        const { error } = await supabase.from('inventario_roll_back')
+        .update({
+            id_compra_guardada: null
+        })
+        .eq('id_compra_guardada', id_compra_guardada);
+        
+        if (error) {
+            console.error(`Error al set como null id_compra_guardada al recuperar compra: `, error);
+            throw 'Ocurrio un error, por favor intente de nuevo';
+        } else {
+            return true;
+        }
+    } catch (error) {
+        console.error("Error en el proceso de set:", error);
+        return false;
+    }
+}
+
 module.exports = { 
     postFirstinventario, 
     buscarProductoInventario, 
@@ -220,5 +260,7 @@ module.exports = {
     verificarInventarioRollBack, 
     addInventarioRollBack, 
     eliminarInventarioRollBack, 
-    eliminarInventarioRollBackEsp 
+    eliminarInventarioRollBackEsp,
+    setNullRollBack,
+    eliminarCompraGuardada
 }

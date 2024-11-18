@@ -131,6 +131,71 @@ const calculos = {
             return 'Error al aplicar calcular detalles venta '+error;
         }
       },
+
+    async eliminarVenta(id_venta, id_factura, supabase){
+    try {
+        const promesas = [
+            this.eliminarFactura(id_factura, supabase),
+            this.eliminarDetallesVenta(id_venta, supabase)
+        ];
+
+        const resultados = await Promise.all(promesas);
+
+        const { resultado: resultadoFactura, message: messageFactura } = resultados[0];
+        const { resultado: resultadoDetVenta, message: messageDetVenta } = resultados[1];
+
+        if(!resultadoFactura){
+            throw messageFactura;
+        }
+
+        if(!resultadoDetVenta){
+            throw messageDetVenta;
+        }
+
+        const { error } = await supabase.from('Ventas')
+        .delete()
+        .eq('id_venta', id_venta);
+
+        if (error){
+            throw error;
+        }
+
+        return {
+            resultado: true,
+            message: 'Venta, facturas y detalles eliminados correctamente!'
+        }
+
+    } catch (error) {
+        return {
+            message: error,
+            resultado: false
+        }
+    }    
+    
+    },
+
+      async eliminarDetallesVenta(id_venta, supabase){
+        try {
+            const { error } = await supabase.from('ventas_detalles')
+            .delete()
+            .eq('id_venta', id_venta);
+
+            if(error){
+                throw error;
+            }
+
+            return {
+                message: 'Se eliminaron los detalle de venta',
+                resultado: true
+            }
+
+        } catch (error) {
+            return {
+                message: error,
+                resultado: false
+            }
+        }
+      },
     
       async postFactura(id_venta, productos, subTotalVenta, supabase){
         let arrayProductos = [];
@@ -346,6 +411,58 @@ const calculos = {
             return 'Error al recuperar total de venta '+error;
         }
       },
+
+      async eliminarFacturaSar(id_factura, supabase){
+        try {
+            const { error } = await supabase.from('factura_SAR')
+            .delete()
+            .eq('id_factura', id_factura);
+
+            if(error){
+                throw error;
+            }
+
+            return {
+                message: 'Se borro los detalles SAR de la factura',
+                resultado: true
+            }
+
+        } catch (error) {
+            return {
+                message: error,
+                resultado: false
+            }
+        }
+      },
+
+      async eliminarFactura(id_factura, supabase){
+        try {
+            const { resultado, message } = await this.eliminarFacturaSar(id_factura, supabase);
+            if(!resultado){
+                throw message;
+            }
+
+            const { error } = await supabase.from('facturas')
+            .delete()
+            .eq('id_factura', id_factura);
+
+            if(error){
+                throw error;
+            }
+
+            return{
+                message: 'Se borro la factura',
+                resultado: true
+            }
+
+        } catch (error) {
+            return {
+                message: error,
+                resultado: false
+            }
+        }
+      },
+    
     
       async cambiarEstadoVenta(id_venta, supabase, estado){
         try {

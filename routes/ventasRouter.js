@@ -8,7 +8,8 @@ const { getPrePage,
     guardarVenta, 
     getVentasGuardadas, 
     recuperarVentaGuardada, 
-    postVenta, 
+    postVenta,
+    eliminarVenta,
     pagarFacturaEfectivo, 
     eliminarProductoVenta,
     cajaAbiertaUsuario,
@@ -30,5 +31,6 @@ router.patch('/buscar-producto/:id_usuario', selectProductoCodigo);
 router.patch('/cerrar-caja', cerrarCajaUsuario);
 router.patch('/eliminar-producto/:id_usuario', eliminarProductoVenta);
 router.patch('/pagar-efectivo', pagarFacturaEfectivo);
+router.delete('/eliminar-venta/:id_venta/:id_factura', eliminarVenta);
 
 module.exports = router;

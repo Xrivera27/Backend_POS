@@ -403,6 +403,28 @@ const recuperarVentaGuardada = async (req, res) => {
      }
   }
 
+  const eliminarVenta = async (req, res) => {
+    const id_venta = req.params.id_venta;
+    const id_factura = req.params.id_factura;
+    const supabase = req.supabase;
+
+    try {
+        const { resultado, message } = await calculos.eliminarVenta(id_venta, id_factura, supabase);
+
+        if( !resultado ){
+            throw message;
+        }
+    
+        res.status(200).json(message);
+
+    } catch (error) {
+        res.status(500).json({
+            error: error.message
+        });
+    }
+
+  }
+
   const eliminarProductoVenta = async (req, res) => {
     const id_usuario = req.params.id_usuario;
     const { id_producto } = req.body;
@@ -613,7 +635,8 @@ module.exports = {
     guardarVenta, 
     getVentasGuardadas, 
     recuperarVentaGuardada, 
-    postVenta, 
+    postVenta,
+    eliminarVenta,
     pagarFacturaEfectivo, 
     eliminarProductoVenta, 
     crearCajaUsuario,

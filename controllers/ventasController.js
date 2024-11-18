@@ -392,9 +392,6 @@ const recuperarVentaGuardada = async (req, res) => {
         }
        }
 
-       
-
-
         res.status(200).json({ 
             id_venta: venta[0].id_venta,
             factura: factura });
@@ -502,7 +499,6 @@ const recuperarVentaGuardada = async (req, res) => {
             throw mensajeRB;
         }
         
-
         res.status(200).json(cambio);
 
     } catch (error) {

@@ -444,46 +444,64 @@ const recuperarVentaGuardada = async (req, res) => {
 
     try {
 
-        const promesas = [
+        let promesas = [
             calculos.obtenerTotalFactura(id_venta, supabase),
             calculos.existeCaja(id_usuario, supabase)
         ];
 
-        const resultados = await Promise.all(promesas);
+        let resultados = await Promise.all(promesas);
 
         const totalFactura = resultados[0];
-        const { resultado } = resultados[1];
+        const { resultado, caja } = resultados[1];
 
         if(!resultado){
             return res.status(500).json({response: 'Este usuario no tiene una caja abierta'});
         }
 
-        //const totalFactura = await calculos.obtenerTotalFactura(id_venta, supabase);
-
         if(totalFactura > pago){
             return res.status(500).json({response: 'Saldo insuficiente'});
         }
 
-
-        const { data: cambio, error } = await supabase.from('facturas')
+        promesas = [
+            supabase.from('facturas')
         .update({
             pago: pago,
             cambio: pago - totalFactura,
             tipo_factura: "Efectivo"
         }).select('cambio')
-        .eq('id_venta', id_venta);
+        .eq('id_venta', id_venta),
+        calculos.actualizarSaldoCaja(caja, totalFactura, supabase),
+        calculos.cambiarEstadoVenta(id_venta, supabase, 'Pagada'),
+        eliminarInventarioRollBack( id_usuario, supabase)
+        ];
+
+        resultados = await Promise.all(promesas);
+
+        const { data: cambio, error } = resultados[0];
+        const { resultado: resultadoSaldo, message } = resultados[1];
+        const { resultado: resultadoEliminarRB, message: mensajeRB } = resultados[3];
 
         if(error){
             console.error('Error al obtener los datos de la tabla:', error.message);
             throw new Error('Ocurrió un error al obtener datos de la tabla inventario.');
         }
 
-        if(!await calculos.cambiarEstadoVenta(id_venta, supabase, 'Pagada')){
+        if(!resultadoSaldo){
+            throw new Error(message);
+        }
+
+        if(!resultados[2]){
             throw 'Error al cambiar estado de venta.';
         }
-        
 
-        await eliminarInventarioRollBack( id_usuario, supabase);
+        if(!resultados[2]){
+            throw 'Error al cambiar estado de venta.';
+        }
+
+        if(!resultadoEliminarRB){
+            throw mensajeRB;
+        }
+        
 
         res.status(200).json(cambio);
 

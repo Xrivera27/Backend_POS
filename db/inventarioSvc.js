@@ -177,12 +177,18 @@ const eliminarInventarioRollBack = async (id_usuario, supabase) => {
             .is('id_compra_guardada', null);
 
         if (error) {
-            console.error(`Error al eliminar los registros de inventario para el usuario ${id_usuario}:`, error);
+            throw error;
         } else {
-            console.log(`Registros de inventario eliminados exitosamente para el usuario ${id_usuario}.`);
+            return {
+                message: `Se elimino el inventario reservado`,
+                resultado: true
+            }
         }
     } catch (error) {
-        console.error("Error en el proceso de eliminación:", error);
+        return {
+            message: `No se pudo eliminar el inventario temporal: ${error}`,
+            resultado: false
+        }
     }
 };
 

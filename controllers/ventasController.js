@@ -443,11 +443,27 @@ const recuperarVentaGuardada = async (req, res) => {
     const { pago, id_venta, id_usuario } = req.body;
 
     try {
-        const totalFactura = await calculos.obtenerTotalFactura(id_venta, supabase);
+
+        const promesas = [
+            calculos.obtenerTotalFactura(id_venta, supabase),
+            calculos.existeCaja(id_usuario, supabase)
+        ];
+
+        const resultados = await Promise.all(promesas);
+
+        const totalFactura = resultados[0];
+        const { resultado } = resultados[1];
+
+        if(!resultado){
+            return res.status(500).json({response: 'Este usuario no tiene una caja abierta'});
+        }
+
+        //const totalFactura = await calculos.obtenerTotalFactura(id_venta, supabase);
 
         if(totalFactura > pago){
             return res.status(500).json({response: 'Saldo insuficiente'});
         }
+
 
         const { data: cambio, error } = await supabase.from('facturas')
         .update({

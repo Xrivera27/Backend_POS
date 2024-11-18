@@ -367,6 +367,64 @@ const calculos = {
             console.error('Error en el proceso:', error);
             return 'Error al recuperar total de venta '+error;
         }
+      },
+
+      async existeCaja(id_usuario, supabase){
+        try{
+            const { data: caja, error } = await supabase
+            .from('caja')
+            .select('id_caja, valor_actual')
+            .eq('id_usuario', id_usuario)
+            .eq('abierto', true)
+            .single();
+    
+            if ( caja || caja.length > 0 ){
+                return {
+                    resultado: true,
+                    caja: caja
+                };
+            }
+            else if ( !caja || caja.length == 0 ){
+                throw 'Este usuario no tiene una caja abierta aun.';
+            }
+
+            if (error){
+                throw error
+            }
+                    
+            }
+        catch(error){
+            return {
+                resultado: false,
+                error: error
+            };
+
+        }
+      },
+
+      async actualizarSaldoCaja(caja, montoSumar, supabase){
+        try {
+            const { error } = await supabase.from('caja')
+            .update({
+                valor_actual: caja.valor_actual + montoSumar
+            })
+            .eq('id_caja', caja.id_caja);
+
+            if(error){
+                throw `Ocurrio un error al actualizar saldo de la caja ${error}`;
+            }
+
+            return {
+                message: 'Saldo actualizado',
+                resultado: true
+            }
+
+        } catch (error) {
+            return {
+                message: error,
+                resultado: false
+            }
+        }
       }
 }
 

@@ -478,6 +478,115 @@ const recuperarVentaGuardada = async (req, res) => {
     }
   }
 
+  const cajaAbiertaUsuario = async(req, res) => {
+    const supabase = req.supabase;
+    const id_usuario = req.params.id_usuario;
+    try {
 
+        const caja = await calculos.existeCaja(id_usuario, supabase);
+        
+        if(!caja.resultado){
+           return res.status(500).json({
+                respuesta: 'Este usuario no tiene una caja abierta aun.'
+            });
+        }
 
-module.exports = { getPrePage, getProductPage, verificarRtn, selectProductoCodigo, guardarVenta, getVentasGuardadas, recuperarVentaGuardada, postVenta, pagarFacturaEfectivo, eliminarProductoVenta }
+            return res.status(200).json(caja.caja);
+
+        
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            error: error
+        });
+    }
+  }
+
+  const cerrarCajaUsuario = async(req, res) => {
+    const supabase = req.supabase;
+    const { id_usuario } = req.body;
+    try {
+        const {resultado, caja} = await calculos.existeCaja(id_usuario, supabase);
+        
+        if(!resultado){
+           return res.status(500).json({
+                respuesta: 'Este usuario no tiene una caja abierta aun.'
+            });
+        }
+
+        const { data: cajaCerrada, error } = await supabase
+        .from('caja')
+
+        .update({
+            abierto: false
+        })
+        .select('id_caja, valor_inicial, valor_actual')
+        .eq('id_caja', caja.id_caja);
+
+        if( error ){
+            console.error('Ocurrio un error al cerrar caja', error);
+            throw 'No se cerro la caja, intentelo mas tarde';
+        }
+
+        res.status(200).json(cajaCerrada);
+
+    } catch (error) {
+        console.error('Ocurrio un error: ', error);
+        res.status(500).json({
+            error: error
+        })
+    }
+  }
+
+  const crearCajaUsuario = async(req, res) => {
+    const supabase = req.supabase;
+    const { id_usuario, valor_inicial } = req.body;
+    try {
+        const {resultado} = await calculos.existeCaja(id_usuario, supabase);
+        
+        if(resultado){
+           return res.status(500).json({
+                respuesta: 'Este usuario ya tiene una caja abierta.'
+            });
+        }
+
+        const { data: cajaCreada, error } = await supabase
+        .from('caja')
+        .insert({
+            id_usuario: id_usuario,
+            valor_inicial: valor_inicial,
+            valor_actual: valor_inicial
+        })
+        .select('id_caja, valor_inicial, valor_actual');
+
+        if( error ){
+            console.error('Ocurrio un error al crear caja', error);
+            throw 'No se creo la caja, intentelo mas tarde';
+        }
+
+        res.status(200).json(cajaCreada);
+
+    } catch (error) {
+        console.error('Ocurrio un error: ', error);
+        res.status(500).json({
+            error: error
+        });
+    }
+  }
+
+module.exports = { 
+    getPrePage, 
+    getProductPage, 
+    verificarRtn, 
+    selectProductoCodigo, 
+    guardarVenta, 
+    getVentasGuardadas, 
+    recuperarVentaGuardada, 
+    postVenta, 
+    pagarFacturaEfectivo, 
+    eliminarProductoVenta, 
+    crearCajaUsuario,
+    cajaAbiertaUsuario,
+    cerrarCajaUsuario
+}

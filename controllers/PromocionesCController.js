@@ -76,7 +76,7 @@ const postCategoriaPromocion = async (req, res) => {
             .from(TABLA_CATEGORIA_PROMOCION)
             .select('*')
             .eq('categoria_producto_Id', categoria_id)
-            .eq('estado', true);
+            .eq('manejo_automatico', true);
 
         if (errorBusqueda) throw errorBusqueda;
 
@@ -107,7 +107,9 @@ const postCategoriaPromocion = async (req, res) => {
         if (promocionSolapada && force_create) {
             const { error: errorUpdate } = await supabase
                 .from(TABLA_CATEGORIA_PROMOCION)
-                .update({ estado: false })
+                .update({ estado: false,
+                    manejo_automatico: false
+                 })
                 .eq('id', promocionSolapada.id);
 
             if (errorUpdate) throw errorUpdate;
@@ -122,7 +124,7 @@ const postCategoriaPromocion = async (req, res) => {
                 porcentaje_descuento,
                 fecha_inicio,
                 fecha_final,
-                estado: true,
+                estado: false,
                 manejo_automatico: true
             })
             .select('*');
@@ -193,7 +195,7 @@ const patchCategoriaPromocion = async (req, res) => {
             .from(TABLA_CATEGORIA_PROMOCION)
             .select('*')
             .eq('categoria_producto_Id', promocionExistente.categoria_producto_Id)
-            .eq('estado', true)
+            .eq('manejo_automatico', true)
             .neq('id', id); // Excluir la promoción actual
 
         if (errorBusquedaOtras) throw errorBusquedaOtras;
@@ -247,7 +249,7 @@ const cambiarEstadoCategoriaPromocion = async (req, res) => {
 
     try {
         const { id } = req.params;
-        const { estado } = req.body;
+        const { manejo_automatico } = req.body;
 
         if (!id) {
             return res.status(400).json({ error: 'ID de promoción no proporcionado' });
@@ -282,12 +284,12 @@ const cambiarEstadoCategoriaPromocion = async (req, res) => {
         }
 
         // Si se está activando la promoción, verificar conflictos
-        if (estado === true) {
+        if (manejo_automatico === true) {
             const { data: promocionesActivas } = await supabase
                 .from(TABLA_CATEGORIA_PROMOCION)
                 .select('*')
                 .eq('categoria_producto_Id', promocionExistente.categoria_producto_Id)
-                .eq('estado', true)
+                .eq('manejo_automatico', true)
                 .neq('id', id);
 
             const nuevaFechaInicio = new Date(promocionExistente.fecha_inicio);
@@ -314,7 +316,9 @@ const cambiarEstadoCategoriaPromocion = async (req, res) => {
         // Actualizar el estado
         const { data: promocion, error } = await supabase
             .from(TABLA_CATEGORIA_PROMOCION)
-            .update({ estado })
+            .update({ manejo_automatico: manejo_automatico,
+                estado: false
+            })
             .eq('id', id)
             .select('*');
 

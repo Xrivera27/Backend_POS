@@ -75,7 +75,7 @@ const postPromocion = async (req, res) => {
             .from(TABLA_PROMOCIONES)
             .select('*')
             .eq('producto_Id', producto_id)
-            .eq('estado', true);
+            .eq('manejo_automatico', true);
 
         if (errorBusqueda) throw errorBusqueda;
 
@@ -106,7 +106,9 @@ const postPromocion = async (req, res) => {
         if (promocionSolapada && force_create) {
             const { error: errorUpdate } = await supabase
                 .from(TABLA_PROMOCIONES)
-                .update({ estado: false })
+                .update({ estado: false,
+                    manejo_automatico: false
+                 })
                 .eq('id', promocionSolapada.id);
 
             if (errorUpdate) throw errorUpdate;
@@ -121,8 +123,8 @@ const postPromocion = async (req, res) => {
                 porcentaje_descuento,
                 fecha_inicio,
                 fecha_final,
-                estado: true,
-                manejo_manual: false
+                estado: false,
+                manejo_automatico: true
             })
             .select('*');
 
@@ -214,11 +216,12 @@ const cambiarEstadoPromocion = async (req, res) => {
 
     try {
         const { id } = req.params;
-        const { estado } = req.body;
+        const { manejo_automatico } = req.body;
 
         if (!id) {
             return res.status(400).json({ error: 'ID de promoción no proporcionado' });
         }
+        console.log(id_usuario);
 
         const id_empresa = await getEmpresaId(id_usuario, supabase);
         if (!id_empresa) {
@@ -251,7 +254,7 @@ const cambiarEstadoPromocion = async (req, res) => {
         // Actualizar el estado
         const { data: promocionActualizada, error } = await supabase
             .from(TABLA_PROMOCIONES)
-            .update({ estado: estado })
+            .update({ manejo_automatico: manejo_automatico })
             .eq('id', id)
             .select('*');
 

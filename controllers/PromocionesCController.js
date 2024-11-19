@@ -123,7 +123,7 @@ const postCategoriaPromocion = async (req, res) => {
                 fecha_inicio,
                 fecha_final,
                 estado: true,
-                manejo_manual: false
+                manejo_automatico: true
             })
             .select('*');
 

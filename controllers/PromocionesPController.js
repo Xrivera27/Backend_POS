@@ -254,7 +254,9 @@ const cambiarEstadoPromocion = async (req, res) => {
         // Actualizar el estado
         const { data: promocionActualizada, error } = await supabase
             .from(TABLA_PROMOCIONES)
-            .update({ manejo_automatico: manejo_automatico })
+            .update({ manejo_automatico: manejo_automatico,
+                estado: false
+             })
             .eq('id', id)
             .select('*');
 

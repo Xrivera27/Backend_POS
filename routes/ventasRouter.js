@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 
 const { getPrePage, 
-    getProductPage, 
+    getProductPage,
+    getVentaPendiente,
     verificarRtn, 
     selectProductoCodigo, 
     guardarVenta, 
@@ -20,6 +21,7 @@ const { getPrePage,
 // Ruta para obtener información del usuario logueado (requiere token)
 router.get('/:id_usuario', getPrePage);
 router.get('/detalles/:id_usuario', getProductPage);
+router.get('/venta-pendiente/:id_usuario', getVentaPendiente);
 router.get('/buscar-cliente/:rtn', verificarRtn);
 router.get('/mostrar-ventas/:id_usuario', getVentasGuardadas);
 router.get('/rec-venta/:id_compra_guardada', recuperarVentaGuardada);

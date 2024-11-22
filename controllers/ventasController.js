@@ -126,7 +126,6 @@ let descuento = 0;
             }
             const precioImpuesto = calculos.impuestoProducto(p.precio_unitario, p.impuesto)
             p.precioImpuesto = precioImpuesto - ( precioImpuesto * descuento );
-            console.log(p.precioImpuesto)
             return p;
         }
 

@@ -101,7 +101,6 @@ const deleteCatProd = async (array_categoria_producto, id_producto, supabase) =>
 
 const conteoProdinCat = async (id_categoria_producto, supabase) => {
     try {
-    
         const { count, error } = await supabase
           .from('asignacion_producto_categoria')
           .select('*', { count: "exact", head: true }) // head: true para que solo cuente y no traiga datos

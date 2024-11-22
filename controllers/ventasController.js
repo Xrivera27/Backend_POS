@@ -2,6 +2,7 @@ const { getSucursalesbyUser, getDatosSarSucursal } = require('../db/sucursalUsua
 
 const { format } = require('date-fns');
 const { getEmpresaId } = require('../db/empresaSvc.js');
+const { tienePromoProducto, tienePromoCategoria, obtenerPromos } = require('../db/promocionesSvs.js');
 const { 
     buscarProductoInventario, 
     reducirInventario, 
@@ -13,6 +14,21 @@ const {
     eliminarCompraGuardada
 } = require('../db/inventarioSvc.js');
 const calculos = require('../db/ventasSvs.js');
+
+const pruebaPromos = async(req, res) => {
+    const supabase = req.supabase;
+    const id_producto = req.params.id_producto;
+    try {
+        
+        const { promociones, promocionesCategoria } = await obtenerPromos(id_producto, supabase);
+
+        res.status(200).json({promociones, promocionesCategoria});
+    } catch (error) {
+        res.status(500).json({
+            error: error,
+        });
+    }
+}
 
 const getPrePage = async (req, res) => {
     const supabase = req.supabase;
@@ -343,7 +359,6 @@ const getVentaPendiente = async (req, res) => {
             error: error
         })
     }
-
 }
 
 const recuperarVentaGuardada = async (req, res) => {
@@ -687,5 +702,9 @@ module.exports = {
     eliminarProductoVenta, 
     crearCajaUsuario,
     cajaAbiertaUsuario,
-    cerrarCajaUsuario
+    cerrarCajaUsuario,
+    
+    ////promociones
+    pruebaPromos
+
 }

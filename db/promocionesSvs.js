@@ -142,8 +142,13 @@ const obtenerPromos = async(id_producto, supabase) => {
             throw promocionesCategoria.message;
         }
 
-       const promocionUsar = definirPrioridad(promociones.promocionProducto, promocionesCategoria.promocionCategoria);
-       console.log(promocionUsar);
+        if(promociones.promocionProducto.length === 0 && promocionesCategoria.promocionCategoria.length === 0){
+            console.log('No hay promociones para este producto');
+        }
+        else{
+            const promocionUsar = definirPrioridad(promociones.promocionProducto, promocionesCategoria.promocionCategoria);
+            console.log(promocionUsar);
+        }
 
         return {
             promociones, promocionesCategoria

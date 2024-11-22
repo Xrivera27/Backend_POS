@@ -2,7 +2,7 @@ const { getSucursalesbyUser, getDatosSarSucursal } = require('../db/sucursalUsua
 
 const { format } = require('date-fns');
 const { getEmpresaId } = require('../db/empresaSvc.js');
-const { tienePromoProducto, tienePromoCategoria, obtenerPromos } = require('../db/promocionesSvs.js');
+const { obtenerPromos } = require('../db/promocionesSvs.js');
 const { 
     buscarProductoInventario, 
     reducirInventario, 
@@ -20,9 +20,11 @@ const pruebaPromos = async(req, res) => {
     const id_producto = req.params.id_producto;
     try {
         
-        const { promociones, promocionesCategoria } = await obtenerPromos(id_producto, supabase);
+        const { promocionActiva} = await obtenerPromos(id_producto, supabase);
+  //      const { promociones, promocionesCategoria} = await obtenerPromos(id_producto, supabase);
 
-        res.status(200).json({promociones, promocionesCategoria});
+        res.status(200).json(promocionActiva);
+//res.status(200).json({promociones: promociones, promocionesCategoria: promocionesCategoria});
     } catch (error) {
         res.status(500).json({
             error: error,
@@ -96,7 +98,7 @@ const getProductPage = async (req, res) => {
         let arrayProductos = [];
 
         const promesas = inventarios.map(async(producto) => {
-
+let descuento = 0;
             const { data: p, errorProducto } = await supabase.from('producto')
             .select('id_producto, codigo_producto, nombre, descripcion, precio_unitario, precio_mayorista, cantidad_activar_mayorista, impuesto')
             .eq('id_producto', producto.id_producto)
@@ -109,15 +111,22 @@ const getProductPage = async (req, res) => {
             }
 
         if(p){
+            const { resultado, promocionActiva: {porcentaje_descuento} } = await obtenerPromos(p.id_producto, supabase);
             if((p.precio_mayorista && p.cantidad_activar_mayorista) && 
-            (p.precio_mayorista > 0 && p.cantidad_activar_mayorista > 0) ){
+            (p.precio_mayorista > 0 && p.cantidad_activar_mayorista > 0) && !resultado ){
                 p.precioImpuestoMayorista = calculos.impuestoProducto(p.precio_mayorista, p.impuesto);
             }
             else{
                 p.precioImpuestoMayorista = 0;
                 p.cantidad_activar_mayorista = 0;
+                
+            if(resultado){
+                descuento = porcentaje_descuento / 100;
             }
-            p.precioImpuesto = calculos.impuestoProducto(p.precio_unitario, p.impuesto);
+            }
+            const precioImpuesto = calculos.impuestoProducto(p.precio_unitario, p.impuesto)
+            p.precioImpuesto = precioImpuesto - ( precioImpuesto * descuento );
+            console.log(p.precioImpuesto)
             return p;
         }
 
@@ -127,9 +136,6 @@ const getProductPage = async (req, res) => {
         
 
      arrayProductos =  (await Promise.all(promesas)).filter(Boolean);
-   //  console.log(cantidadNull);
-   //  console.log(arrayProductos);
-
 
         res.status(200).json(
         arrayProductos

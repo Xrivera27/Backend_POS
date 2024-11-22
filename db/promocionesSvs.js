@@ -37,7 +37,7 @@ try {
 
 const tienePromoCategoria = async (id_producto, supabase) => {
     try {
-        const { data: promocionCategoria, error } = await supabase
+        const { data: categoria, error } = await supabase
       .from('asignacion_producto_categoria')
       .select(`
         categoria_producto(
@@ -52,6 +52,8 @@ const tienePromoCategoria = async (id_producto, supabase) => {
       `)
       .eq('id_producto', id_producto)
       .eq('categoria_producto.categoria_promocion.estado', true);
+
+      const promocionCategoria = categoria.filter(categoriaPromo => categoriaPromo.categoria_producto.categoria_promocion.length > 0 );
 
       const conteos = promocionCategoria.map(async(categoria) => {
            const conteo = await conteoProdinCat(categoria.categoria_producto.id_categoria, supabase)
@@ -99,13 +101,13 @@ const definirPrioridad = (promocionProducto, promocionCategoria) => {
 }
 
 const definirPrioridadCategoria = (promocionCategoria) => {
+
     const menorValor = Math.min(...promocionCategoria.map(elemento => elemento.categoria_producto.productosUsando));
     const arrayCantidadUsando = promocionCategoria.filter(elemento => elemento.categoria_producto.productosUsando === menorValor);
 
     if(arrayCantidadUsando.length > 1){
         const objetoConMenorConteo = arrayCantidadUsando.reduce((minObj, currentObj) => {
-           // console.log(currentObj.categoria_producto.categoria_promocion[0].porcentaje_descuento);
-            return (currentObj.categoria_producto.categoria_promocion[0].porcentaje_descuento < minObj.categoria_producto.categoria_promocion[0].porcentaje_descuento) ? currentObj : minObj;
+            return (currentObj.categoria_producto.categoria_promocion[0].porcentaje_descuento > minObj.categoria_producto.categoria_promocion[0].porcentaje_descuento) ? currentObj : minObj;
           }, arrayCantidadUsando[0]);
           return {
             id: objetoConMenorConteo.categoria_producto.id_categoria,
@@ -113,7 +115,7 @@ const definirPrioridadCategoria = (promocionCategoria) => {
             porcentaje_descuento: objetoConMenorConteo.categoria_producto.categoria_promocion[0].porcentaje_descuento
           }
     }
-   // return arrayCantidadUsando[0].categoria_producto.categoria_promocion[0].porcentaje_descuento;
+   
    return {
     id: arrayCantidadUsando[0].categoria_producto.categoria_promocion[0].categoria_producto_Id,
     nombre: arrayCantidadUsando[0].categoria_producto.categoria_promocion[0].nombre_promocion,
@@ -143,19 +145,25 @@ const obtenerPromos = async(id_producto, supabase) => {
         }
 
         if(promociones.promocionProducto.length === 0 && promocionesCategoria.promocionCategoria.length === 0){
-            console.log('No hay promociones para este producto');
-        }
-        else{
-            const promocionUsar = definirPrioridad(promociones.promocionProducto, promocionesCategoria.promocionCategoria);
-            console.log(promocionUsar);
+            return {
+                resultado: false,
+                promocionActiva: [],
+
+            }
         }
 
-        return {
-            promociones, promocionesCategoria
-        }
+        const promocionUsar = definirPrioridad(promociones.promocionProducto, promocionesCategoria.promocionCategoria);    
+
+        return {resultado: true, promocionActiva: promocionUsar,                 
+            promociones: promociones,
+            promocionesCategoria: promocionesCategoria};
+            
+        
 
     } catch (error) {
+        console.log(error);
         return {
+
             error: error
         }
     }

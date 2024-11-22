@@ -1,17 +1,21 @@
+const { obtenerPromos } = require('./promocionesSvs.js');
+
 const calculos = {
     async calcularDetallesVenta(id_venta, productos, supabase) {
 
         let exitos = 0;
         let subTotalVenta = 0;
+        let totalDescuento = 0
         try{
             const promesas = productos.map(async (elementoProducto) => {
-                const { totalDetalle, precio_usar } = await this.calcularDetalleProducto(elementoProducto, supabase);
+                const { totalDetalle, precio_usar, descuento } = await this.calcularDetalleProducto(elementoProducto, supabase);
                 
                 const { error } = await supabase.from('ventas_detalles')
                     .insert({
                         id_venta: id_venta,
                         id_producto: elementoProducto.id_producto,
                         cantidad: elementoProducto.cantidad,
+                        descuento: descuento,
                         total_detalle: totalDetalle
                     });
             
@@ -22,13 +26,14 @@ const calculos = {
             
                 subTotalVenta += totalDetalle;
                 elementoProducto.precio_usar = precio_usar;
+                totalDescuento += descuento;
                 exitos++;
             });
             
             await Promise.all(promesas);
             
             const [factura] = await Promise.all([
-                this.postFactura(id_venta, productos, subTotalVenta, supabase),
+                this.postFactura(id_venta, productos, subTotalVenta, totalDescuento, supabase),
                 this.calcularSubtotalVenta(id_venta, subTotalVenta, supabase)
             ]);
         return { exitos, factura }
@@ -93,8 +98,8 @@ const calculos = {
 
       async calcularDetalleProducto(elementoProducto, supabase){
         let precio_usar;
+        let descuento = 0;
         try {
-                
             const { data:  producto, error } = await supabase.from('producto')
             .select('precio_unitario, precio_mayorista, cantidad_activar_mayorista')
             .eq('id_producto',elementoProducto.id_producto)
@@ -105,6 +110,8 @@ const calculos = {
                 console.error('Error al obtener los datos de la tabla:', error.message);
                 throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
             }
+
+            const { resultado: resultadoPromocion, promocionActiva } = await obtenerPromos(elementoProducto.id_producto, supabase);
     
             if (
                 (producto.precio_mayorista > 0 && 
@@ -112,7 +119,9 @@ const calculos = {
                 producto.precio_mayorista !== undefined) &&
                 (   producto.cantidad_activar_mayorista !== null &&
                     producto.cantidad_activar_mayorista !== undefined &&
-                    producto.cantidad_activar_mayorista <= elementoProducto.cantidad)
+                    producto.cantidad_activar_mayorista <= elementoProducto.cantidad) &&
+                    (!resultadoPromocion)
+
             )
                 {
                     console.log(producto.precio_mayorista);
@@ -122,9 +131,17 @@ const calculos = {
             else {
                 totalDetalle = producto.precio_unitario * elementoProducto.cantidad;
                 precio_usar = producto.precio_unitario;
+
+                if(resultadoPromocion){
+                    
+                    const porcentaje = promocionActiva.porcentaje_descuento / 100;
+                    if(porcentaje > 0 && porcentaje < 1){
+                         descuento = (this.impuestoProducto(producto.precio_unitario, elementoProducto.impuesto) * porcentaje ) * elementoProducto.cantidad;
+                    }   
+                }
             }
 
-            return { totalDetalle, precio_usar }
+            return { totalDetalle, precio_usar, descuento }
     
         } catch (error) {
             console.error('Error en el proceso:', error);
@@ -197,7 +214,7 @@ const calculos = {
         }
       },
     
-      async postFactura(id_venta, productos, subTotalVenta, supabase){
+      async postFactura(id_venta, productos, subTotalVenta, totalDescuento, supabase){
         let arrayProductos = [];
 
         const promesas = productos.map(async(producto) => {
@@ -232,7 +249,8 @@ const calculos = {
                 ISV_15: impuestos.ISV_15,
                 ISV_18: impuestos.ISV_18,
                 total_ISV: impuestos.total_impuesto,
-                total: subTotalVenta + impuestos.total_impuesto
+                descuento: totalDescuento,
+                total: subTotalVenta + impuestos.total_impuesto - totalDescuento
             }).select('id_factura, total_ISV, total');
     
             if(error){

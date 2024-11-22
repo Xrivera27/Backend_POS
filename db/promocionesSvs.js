@@ -87,6 +87,41 @@ const tienePromoCategoria = async (id_producto, supabase) => {
     }
 }
 
+const definirPrioridad = (promocionProducto, promocionCategoria) => {
+
+        if(promocionProducto.length !== 0){
+            return promocionProducto[0];
+        }
+        else{
+           return definirPrioridadCategoria(promocionCategoria);
+        }
+
+}
+
+const definirPrioridadCategoria = (promocionCategoria) => {
+    const menorValor = Math.min(...promocionCategoria.map(elemento => elemento.categoria_producto.productosUsando));
+    const arrayCantidadUsando = promocionCategoria.filter(elemento => elemento.categoria_producto.productosUsando === menorValor);
+
+    if(arrayCantidadUsando.length > 1){
+        const objetoConMenorConteo = arrayCantidadUsando.reduce((minObj, currentObj) => {
+           // console.log(currentObj.categoria_producto.categoria_promocion[0].porcentaje_descuento);
+            return (currentObj.categoria_producto.categoria_promocion[0].porcentaje_descuento < minObj.categoria_producto.categoria_promocion[0].porcentaje_descuento) ? currentObj : minObj;
+          }, arrayCantidadUsando[0]);
+          return {
+            id: objetoConMenorConteo.categoria_producto.id_categoria,
+            nombre_promocion: objetoConMenorConteo.categoria_producto.nombre_categoria,
+            porcentaje_descuento: objetoConMenorConteo.categoria_producto.categoria_promocion[0].porcentaje_descuento
+          }
+    }
+   // return arrayCantidadUsando[0].categoria_producto.categoria_promocion[0].porcentaje_descuento;
+   return {
+    id: arrayCantidadUsando[0].categoria_producto.categoria_promocion[0].categoria_producto_Id,
+    nombre: arrayCantidadUsando[0].categoria_producto.categoria_promocion[0].nombre_promocion,
+    porcentaje_descuento: arrayCantidadUsando[0].categoria_producto.categoria_promocion[0].porcentaje_descuento
+   }
+
+}
+
 const obtenerPromos = async(id_producto, supabase) => {
     try {
         const promesasPromociones = [
@@ -106,6 +141,9 @@ const obtenerPromos = async(id_producto, supabase) => {
         if(!promocionesCategoria.resultado){
             throw promocionesCategoria.message;
         }
+
+       const promocionUsar = definirPrioridad(promociones.promocionProducto, promocionesCategoria.promocionCategoria);
+       console.log(promocionUsar);
 
         return {
             promociones, promocionesCategoria

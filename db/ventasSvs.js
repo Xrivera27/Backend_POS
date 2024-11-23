@@ -251,7 +251,7 @@ const calculos = {
                 total_ISV: impuestos.total_impuesto,
                 descuento: totalDescuento,
                 total: subTotalVenta + impuestos.total_impuesto - totalDescuento
-            }).select('id_factura, total_ISV, total');
+            }).select('id_factura, total_ISV, descuento, total');
     
             if(error){
                 console.error('Error al insertar factura:', error.message);

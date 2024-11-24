@@ -6,6 +6,7 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const { sessionActiva } = require('./middlewares/sessionMiddleware.js');
 const routes = require('./routes'); // Importar el index de rutas
+require('./Tasks/startTasks.js');
 
 // Inicializar Express
 const app = express();

@@ -13,7 +13,7 @@ const getRollBacksVencidos = async () => {
     try {
         const { data: rollBacks, error } = await supabase.from('inventario_roll_back')
         .select('id_inventario_roll_back, id_inventario, cantidad')
-        .lte('created_at', obtenerHoraVencida())
+      //  .lte('created_at', obtenerHoraVencida())
         .is('id_compra_guardada', null);
 
         if(error){
@@ -31,9 +31,12 @@ const getRollBacksVencidos = async () => {
 const restaurarInventario = async () => {
     try {
         const inventariosRB = await getRollBacksVencidos();
-        
+    
            const restauraciones = inventariosRB.map(inventario => {
-               return eliminarInventarioRollBackEsp(inventario.id_inventario, inventario.id_inventario_roll_back, supabase)
+            const inventarioObject = {
+                id_inventario: inventario.id_inventario
+            }
+               return eliminarInventarioRollBackEsp(inventarioObject, inventario.id_inventario_roll_back, supabase)
             });
 
         Promise.all(restauraciones);
@@ -42,7 +45,7 @@ const restaurarInventario = async () => {
     }
 }
 
-cron.schedule("19 23 * * *", async () => {
+cron.schedule("0 * * * *", async () => {
     await restaurarInventario();
 });
 

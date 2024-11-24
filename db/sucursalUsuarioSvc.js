@@ -1,3 +1,5 @@
+//Para obtener el id de la sucursal mediante el usuario  
+
 const getSucursalesbyUser = async (id_usuario, supabase) => {
     try {
 

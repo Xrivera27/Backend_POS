@@ -1,3 +1,5 @@
+//Funciones relacionadas con inventario para que no esten en controller 
+
 const getInventario = async (id_producto, id_sucursal, supabase) => {
     try {
 
@@ -91,22 +93,21 @@ const reducirInventario = async (id_producto, id_sucursal, cantidad, supabase) =
 
 const aumentarInventario = async (inventario, cantidad, supabase) => {
     try {
-
-        if (!inventario) {
-            throw new Error("Inventario no encontrado");
-        }
-
-        const { error } = await supabase.rpc('aumentar_stock', {id_inventario_param: inventario.id_inventario, cantidad: cantidad});
+        // Usar RPC para asegurar la atomicidad de la operación
+        const { error } = await supabase.rpc('aumentar_stock', {
+            id_inventario_param: inventario.id_inventario,
+            cantidad: cantidad
+        });
 
         if (error) {
-            throw new Error("Ocurrió un error al actualizar inventario: " + error.message);
+            console.error('Error en aumentar_stock:', error);
+            throw new Error(`Error al actualizar inventario: ${error.message}`);
         }
 
-        return inventario.id_inventario;
-
+        return true;
     } catch (error) {
-        console.error("Error en aumentarInventario:", error.message);
-        return false; // Devolvemos false en caso de error
+        console.error("Error en aumentarInventario:", error);
+        throw error;
     }
 };
 
@@ -263,6 +264,7 @@ module.exports = {
     postFirstinventario, 
     buscarProductoInventario, 
     reducirInventario,
+    aumentarInventario,  // Añadir esta línea
     verificarInventarioRollBack, 
     addInventarioRollBack, 
     eliminarInventarioRollBack, 

@@ -37,6 +37,7 @@ const ClienteReporte = require('./clientereporteRoutes');
 
 //ventas y compras
 const ventasRouter = require('./ventasRouter.js');
+const comprasRouter = require('./ComprasRoutes');
 
 // Promociones
 const PromocionesP = require('./PromocionesPRoutes');
@@ -87,6 +88,7 @@ router.use('/unidad-medida', unidadMedidaRouter);
 
 //ventas y compras
 router.use('/ventas', ventasRouter);
+router.use('/compras', comprasRouter);
 
 
 module.exports = router;

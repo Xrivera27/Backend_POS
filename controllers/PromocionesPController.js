@@ -221,7 +221,7 @@ const cambiarEstadoPromocion = async (req, res) => {
         if (!id) {
             return res.status(400).json({ error: 'ID de promoción no proporcionado' });
         }
-        console.log(id_usuario);
+        
 
         const id_empresa = await getEmpresaId(id_usuario, supabase);
         if (!id_empresa) {

@@ -5,7 +5,7 @@ const { eliminarInventarioRollBackEsp } = require('../db/inventarioSvc.js');
 
 const obtenerHoraVencida = () => {
         const ahora = new Date();
-        ahora.setHours(ahora.getHours() - 1 );
+        ahora.setHours(ahora.getHours() - 2 );
         return  ahora.toISOString();
 }
 
@@ -14,7 +14,7 @@ const getRollBacksVencidos = async () => {
         const { data: rollBacks, error } = await supabase.from('inventario_roll_back')
         .select('id_inventario_roll_back, id_inventario, cantidad')
         .lte('created_at', obtenerHoraVencida())
-        .is('id_compra_guardada', null);
+        .not('id_compra_guardada', 'is', null);
 
         if(error){
             throw error;
@@ -41,7 +41,8 @@ const restaurarInventario = async () => {
 
         Promise.all(restauraciones);
     } catch (error) {
-        
+        console.error('Ocurrio un error', error.message);
+        return error;
     }
 }
 

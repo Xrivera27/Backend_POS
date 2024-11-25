@@ -20,7 +20,10 @@ const pruebaPromos = async(req, res) => {
     const id_producto = req.params.id_producto;
     try {
         
-        const { promocionActiva} = await obtenerPromos(id_producto, supabase);
+        const { promocionActiva, resultado, error} = await obtenerPromos(id_producto, supabase);
+        if(!resultado){
+            return res.status(500).json({error: error});
+        }
   //      const { promociones, promocionesCategoria} = await obtenerPromos(id_producto, supabase);
 
         res.status(200).json(promocionActiva);

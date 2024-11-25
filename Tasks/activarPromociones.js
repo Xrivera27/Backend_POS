@@ -69,7 +69,7 @@ const activarPromosCategoria = async () => {
     const fechaActual = new Date();
     try {
         const { data: promos, error: errorGet } = await supabase.from('categoria_promocion')
-        .select('id,nombre_promocion, categoria_producto_Id')
+        .select('id, nombre_promocion, categoria_producto_Id')
         .lte('fecha_inicio', fechaActual.toISOString())
         .gte('fecha_final', fechaActual.toISOString())
         .eq('manejo_automatico', true)
@@ -79,8 +79,42 @@ const activarPromosCategoria = async () => {
             throw errorGet;
         }
 
+        const totalPromos = promos.map(async (p) => {
+            try {
+                const { resultado } = await tienePromoCategoriabyCategoria(p.categoria_producto_Id, supabase);
+                if(resultado){
+                    return null;
+                }
+
+                return p;
+            } catch (error) {
+                console.log(error);
+                return error;
+            }
+        });
+
+        const promosFiltrados = await Promise.all(totalPromos);
+
+
+        const activarPromos = promosFiltrados.map(async (p) => {
+            const { data: promoActivada, error: errorAct } = await supabase.from('categoria_promocion')
+            .update({
+                estado: true
+            })
+            .eq('id', p.id)
+            .select('id, nombre_promocion');
+
+            if( errorAct){
+                throw errorAct;
+            }
+
+            return promoActivada;
+        });
+
+        const promosActivadas = await Promise.all(activarPromos);
+
         return {
-            promosCategoria: promos,
+            promosCategoria: promosActivadas,
             resultado: true,
             message: 'Exitoso'
         }
@@ -93,7 +127,7 @@ const activarPromosCategoria = async () => {
     }
 }
 
-cron.schedule('* * * * * *', async () => {
+cron.schedule('50 1 * * * *', async () => {
     try {
         const getPromos = [
             activarPromosProducto(),
@@ -110,7 +144,8 @@ cron.schedule('* * * * * *', async () => {
     }
 
     if(resultCategory && promosCategoria.length > 0){
-     //   console.log(promosCategoria);
+        console.log('Se activaron las siguientes promociones de Categoria:');
+        console.log(promosCategoria);
     }
 
     if(!resultProduct){

@@ -95,13 +95,13 @@ const tienePromoCategoriabyCategoria = async (id_categoria, supabase) => {
         const {data: promocionCategoria, error} = await supabase
         .from('categoria_promocion')
         .select('id, nombre_promocion, porcentaje_descuento')
-        .eq('categoria_Id', id_categoria)
+        .eq('categoria_producto_Id', id_categoria)
         .eq('estado', true);
     
         if(error){
             throw error;
         }
-    
+
         if(promocionCategoria.length === 0){
             return {
                 resultado: false,
@@ -117,6 +117,7 @@ const tienePromoCategoriabyCategoria = async (id_categoria, supabase) => {
         }
     
     } catch (error) {
+        console.log(error);
         return{
             resultado: false,
             message: 'No se obtuvo una promocion para este producto',

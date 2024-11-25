@@ -33,12 +33,16 @@ const getPromosActivas = async () => {
 }
 
 cron.schedule('10 1 * * *', async() => {
+    try {
     const { resultado, promocionesDsc } = await getPromosActivas();
     if(resultado) {
         console.log(`Las siguientes promociones fueron desactivadas por que su fecha expiro:`);
         console.log(promocionesDsc);
-
     }
+    } catch (error) {
+        console.error('Ocurrio un error: ', error);
+    }
+    
 });
 
 module.exports = cron;

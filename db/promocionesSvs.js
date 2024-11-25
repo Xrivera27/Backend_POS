@@ -89,6 +89,41 @@ const tienePromoCategoria = async (id_producto, supabase) => {
     }
 }
 
+const tienePromoCategoriabyCategoria = async (id_categoria, supabase) => {
+    try {
+        const {data: promocionCategoria, error} = await supabase
+        .from('categoria_promocion')
+        .select('id, nombre_promocion, porcentaje_descuento')
+        .eq('categoria_Id', id_categoria)
+        .eq('estado', true);
+    
+        if(error){
+            throw error;
+        }
+    
+        if(promocionCategoria.length === 0){
+            return {
+                resultado: true,
+                message: 'No hay promociones para esta Categoria.',
+                promocionCategoria
+              }
+          }
+    
+        return {
+            resultado: true,
+            message: 'Se obtuvo una promocion para esta Categoria',
+            promocionCategoria
+        }
+    
+    } catch (error) {
+        return{
+            resultado: false,
+            message: 'No se obtuvo una promocion para este producto',
+            error: error
+        }
+    }
+}
+
 const definirPrioridad = (promocionProducto, promocionCategoria) => {
 
         if(promocionProducto.length !== 0){
@@ -169,4 +204,4 @@ const obtenerPromos = async(id_producto, supabase) => {
     }
 }
 
-module.exports = { tienePromoProducto, tienePromoCategoria, obtenerPromos }
+module.exports = { tienePromoProducto, tienePromoCategoria, tienePromoCategoriabyCategoria, obtenerPromos }

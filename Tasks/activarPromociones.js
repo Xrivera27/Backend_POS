@@ -32,8 +32,18 @@ const activarPromosProducto = async () => {
         });
 
         const promosFiltrados = await Promise.all(totalPromos);
+        const sinNull = promosFiltrados.filter(p => p !== null);
 
-        const activarPromos = promosFiltrados.map(async (p) => {
+        if(!sinNull || sinNull.length === 0 || sinNull === null){
+
+            return {
+                promosProducto: [],
+            resultado: true,
+            message: 'No hay promociones disponibles para activar'
+            }
+        }
+
+        const activarPromos = sinNull.map(async (p) => {
             const { data: promoActivada, error: errorAct } = await supabase.from('Producto_promocion')
             .update({
                 estado: true
@@ -93,10 +103,24 @@ const activarPromosCategoria = async () => {
             }
         });
 
+        
+
+        
+
         const promosFiltrados = await Promise.all(totalPromos);
+        const sinNull = promosFiltrados.filter(p => p !== null);
+
+        if(!sinNull || sinNull.length === 0 || sinNull === null){
+
+            return {
+                promosCategoria: [],
+            resultado: true,
+            message: 'No hay promociones disponibles para activar'
+            }
+        }
 
 
-        const activarPromos = promosFiltrados.map(async (p) => {
+        const activarPromos = sinNull.map(async (p) => {
             const { data: promoActivada, error: errorAct } = await supabase.from('categoria_promocion')
             .update({
                 estado: true
@@ -127,7 +151,7 @@ const activarPromosCategoria = async () => {
     }
 }
 
-cron.schedule('50 1 * * * *', async () => {
+cron.schedule('* * * * * *', async () => {
     try {
         const getPromos = [
             activarPromosProducto(),

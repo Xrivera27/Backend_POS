@@ -4,7 +4,6 @@ const { tienePromoProducto, tienePromoCategoriabyCategoria } = require('../db/pr
 
 const activarPromosProducto = async () => {
     const fechaActual = new Date();
-    let = promosDisponibles = [];
     try {
         const { data: promos, error: errorGet } = await supabase.from('Producto_promocion')
         .select('id,promocion_nombre, producto_Id')
@@ -14,23 +13,46 @@ const activarPromosProducto = async () => {
         .eq('estado', false);
 
         if(errorGet){
+            
             throw errorGet;
         }
+        const totalPromos = promos.map(async (p) => {
+            try {
+                const { resultado } = await tienePromoProducto(p.producto_Id, supabase);
+                if(resultado){
+                    
+                    return null;
+                }
 
-        const filtrarPromos = promos.map(async p => {
-            const existePromo = await tienePromoProducto(p.producto_Id, supabase);
-            if(existePromo.promocionProducto.length > 0 || !existePromo.promocionProducto){
-                console.log(existePromo);
                 return p;
+            } catch (error) {
+                console.log(error);
+                return error;
             }
         });
 
-        const resultados = await Promise.all(filtrarPromos);
+        const promosFiltrados = await Promise.all(totalPromos);
 
-        const promosDisponibles = resultados.filter((p) => p !== null);
+        const activarPromos = promosFiltrados.map(async (p) => {
+            const { data: promoActivada, error: errorAct } = await supabase.from('Producto_promocion')
+            .update({
+                estado: true
+            })
+            .eq('id', p.id)
+            .select('id, promocion_nombre');
+
+            if( errorAct){
+                throw errorAct;
+            }
+
+            return promoActivada;
+        });
+
+        const promosActivadas = await Promise.all(activarPromos);
+
         
         return {
-            promosProducto: promosDisponibles,
+            promosProducto: promosActivadas,
             resultado: true,
             message: 'Exitoso'
         }
@@ -71,7 +93,7 @@ const activarPromosCategoria = async () => {
     }
 }
 
-cron.schedule('* 1 * * * *', async () => {
+cron.schedule('* * * * * *', async () => {
     try {
         const getPromos = [
             activarPromosProducto(),
@@ -81,13 +103,14 @@ cron.schedule('* 1 * * * *', async () => {
 
     const { promosProducto, resultado: resultProduct, message: messProduct } = promociones[0];
     const { promosCategoria, resultado: resultCategory, message: messCategory } = promociones[1];
-    
+
     if(resultProduct && promosProducto.length > 0){
+        console.log('Se activaron las siguientes promociones de producto:');
         console.log(promosProducto);
     }
 
     if(resultCategory && promosCategoria.length > 0){
-        console.log(promosCategoria);
+     //   console.log(promosCategoria);
     }
 
     if(!resultProduct){

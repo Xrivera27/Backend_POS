@@ -270,6 +270,8 @@ const eliminarPromoAlert = async (id_promocion, supabase) => {
             throw errorPromo;
         }
 
+        console.log(id_alert_selected);
+
         const { error: errorAlert } = await supabase.from('alerts')
         .delete()
         .eq('id_alert', id_alert_selected);

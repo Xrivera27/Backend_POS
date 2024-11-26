@@ -1,6 +1,7 @@
 const TABLA_PROMOCIONES = 'Producto_promocion';
 const TABLA_PRODUCTO = 'producto';
-const { getEmpresaId } = require('../db/EmpresaSvc');
+const { getEmpresaId } = require('../db/empresaSvc');
+const { eliminarPromoAlert } = require('../db/alerts');
 
 const getPromocionesEmpresa = async (req, res) => {
     const supabase = req.supabase;
@@ -259,6 +260,9 @@ const cambiarEstadoPromocion = async (req, res) => {
              })
             .eq('id', id)
             .select('*');
+            if (manejo_automatico === false) {
+                await eliminarPromoAlert(id, supabase);
+            }
 
         if (error) throw error;
 

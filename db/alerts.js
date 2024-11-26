@@ -3,6 +3,159 @@ const { getSucursalesbyUser } = require('./sucursalUsuarioSvc.js');
 const { getEmpresaIdbyProduct } = require('./productoSvs.js');
 const { getEmpresaIdbyCategoria } = require('./catProdSvs.js');
 
+const getAlertCeo = async(id_usuario, supabase) => {
+    try {
+        const id_empresa = await getEmpresaId(id_usuario, supabase);
+        const { data: alerts, error } = await supabase.from('alerts')
+        .select('tipo, descripcion, puntaje')
+        .eq('id_empresa', id_empresa);
+
+        if(error){
+            throw error;
+        }
+
+        if(alerts.length === 0 || !alerts){
+            return {
+                resultado: false,
+                alertas: []
+            }
+        }
+
+        alerts.forEach(element => {
+            switch(element.tipo){
+                case 'stock_minimo':
+                    element.name = 'Stock Bajo';
+                    break;
+
+                case 'stock_maximo':
+                    element.name = 'Stock Alto';
+                    break;
+                
+                case 'promocion_producto_entrante':
+                    element.name = 'Promocion de Producto';
+                    break;
+
+                case 'promocion_categoria_entrante':
+                    element.name = 'Promocion de Categoria';
+                    break;
+                
+                default: console.error('Ocurrio un error al mostrar una alerta', 'Tipo alerta no existe');
+                break;
+            }
+        });
+
+        return {
+            resultado: true,
+            alertas: alerts
+        }
+
+    } catch (error) {
+        console.error('Ocurrio un error al definir una alerta: ', error);
+        return {
+            resultado: false,
+            alertas: [],
+            error: error
+        }
+    }
+}
+
+const getAlertAmdministrador = async(id_usuario, supabase) => {
+    try {
+        const id_empresa = await getEmpresaId(id_usuario, supabase);
+        const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+        let alertas_stocks;
+        
+//         .from('tabla_general')
+//   .select('*')
+//   .or(
+//     `id_general.in.(select id_general from tabla_detalles1 where id_usuario = ${idUsuario}),` +
+//     `id_general.in.(select id_general from tabla_detalles2 where id_empresa = ${idEmpresa})`
+//   );
+
+const { data: id_stocks, error: errorStocks } = await supabase.from('alerts_stocks')
+.select('id_alert')
+.eq('id_sucursal', id_sucursal);
+
+        if(errorStocks){
+            throw errorStocks;
+        }
+
+
+        if(id_stocks.length !== 0 || alerts){
+            const alertIds = id_stocks.map(stock => stock.id_alert);
+            const { data, error: errorAlertsStocks } = await supabase.from('alerts')
+            .select('id_alert, tipo, descripcion, puntaje')
+            .in('id_alert', alertIds);
+            
+                    if(errorAlertsStocks){
+                        throw errorAlertsStocks;
+                    }
+
+                    alertas_stocks = data;
+
+        }
+
+        const { data: id_promos, error: errorPromos } = await supabase.from('alerts_promocion')
+.select('id_alert')
+.eq('id_sucursal', id_sucursal);
+
+        if(errorStocks){
+            throw errorStocks;
+        }
+
+
+        if(id_stocks.length !== 0 || alerts){
+            const alertIds = id_stocks.map(stock => stock.id_alert);
+            const { data, error: errorAlertsStocks } = await supabase.from('alerts')
+            .select('id_alert, tipo, descripcion, puntaje')
+            .in('id_alert', alertIds);
+            
+                    if(errorAlertsStocks){
+                        throw errorAlertsStocks;
+                    }
+
+                    alertas_stocks = data;
+
+        }
+
+        // alerts.forEach(element => {
+        //     switch(element.tipo){
+        //         case 'stock_minimo':
+        //             element.name = 'Stock Bajo';
+        //             break;
+
+        //         case 'stock_maximo':
+        //             element.name = 'Stock Alto';
+        //             break;
+                
+        //         case 'promocion_producto_entrante':
+        //             element.name = 'Promocion de Producto';
+        //             break;
+
+        //         case 'promocion_categoria_entrante':
+        //             element.name = 'Promocion de Categoria';
+        //             break;
+                
+        //         default: console.error('Ocurrio un error al mostrar una alerta', 'Tipo alerta no existe');
+        //         break;
+        //     }
+        // });
+
+        return {
+            resultado: true,
+            alertas: []
+        }
+
+    } catch (error) {
+        console.error('Ocurrio un error al definir una alerta: ', error);
+        return {
+            resultado: false,
+            alertas: [],
+            error: error
+        }
+    }
+}
+
 const necesitaAlertStockMin = async (producto, id_usuario, supabase) => {
     try {
         const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
@@ -382,4 +535,4 @@ const eliminarPromoAlertCategory = async (id_promocion, supabase) => {
     }
 }
 
-module.exports = { crearAlertStockMinimo, necesitaAlertStockMin, necesitaAlertStockMax, crearAlertPromoProduct, crearAlertPromoCategory, eliminarPromoAlert, eliminarPromoAlertCategory }
+module.exports = { crearAlertStockMinimo, necesitaAlertStockMin, necesitaAlertStockMax, crearAlertPromoProduct, crearAlertPromoCategory, eliminarPromoAlert, eliminarPromoAlertCategory, getAlertCeo, getAlertAmdministrador }

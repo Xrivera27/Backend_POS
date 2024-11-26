@@ -39,6 +39,7 @@ const unidadMedidaRouter = require('./unidadMedidaRoutes.js')
 const categoriProductoRouter = require('./categoriaProutes.js');
 const inventarioRouter = require('./inventariosRoutes.js');
 const ClienteReporte = require('./clientereporteRoutes');
+const alertsRouter = require('./alertsRoutes.js');
 
 
 //ventas y compras
@@ -91,6 +92,7 @@ router.use('/sucursales', sucursalRouter);
 router.use('/productos', productosRoutes);
 router.use('/inventario', inventarioRouter);
 router.use('/unidad-medida', unidadMedidaRouter);
+router.use('/alertas', alertsRouter);
 
 //ventas y compras
 router.use('/ventas', ventasRouter);

@@ -1,5 +1,5 @@
 const { obtenerPromos } = require('./promocionesSvs.js');
-const { necesitaAlertStockMin } = require('./alerts.js');
+const { necesitaAlertStockMin, necesitaAlertStockMax } = require('./alerts.js');
 
 const calculos = {
     async calcularDetallesVenta(id_venta, productos, id_usuario, supabase) {
@@ -143,6 +143,7 @@ const calculos = {
             }
 
             necesitaAlertStockMin(elementoProducto, id_usuario, supabase);
+            necesitaAlertStockMax(elementoProducto, id_usuario, supabase);
 
             return { totalDetalle, precio_usar, descuento }
     

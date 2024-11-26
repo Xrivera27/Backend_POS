@@ -1,6 +1,7 @@
 const TABLA_CATEGORIA_PROMOCION = 'categoria_promocion';
 const TABLA_CATEGORIA = 'categoria_producto';
-const { getEmpresaId } = require('../db/EmpresaSvc');
+const { getEmpresaId } = require('../db/empresaSvc');
+const { eliminarPromoAlertCategory } = require('../db/alerts.js');
 
 const getCategoriasPromocionEmpresa = async (req, res) => {
     const supabase = req.supabase;
@@ -311,6 +312,8 @@ const cambiarEstadoCategoriaPromocion = async (req, res) => {
                     error: 'No se puede activar la promoción porque hay otra promoción activa en las mismas fechas'
                 });
             }
+
+            
         }
 
         // Actualizar el estado
@@ -321,6 +324,9 @@ const cambiarEstadoCategoriaPromocion = async (req, res) => {
             })
             .eq('id', id)
             .select('*');
+            if (manejo_automatico === false) {
+                await eliminarPromoAlertCategory(id, supabase);
+            }
 
         if (error) throw error;
 

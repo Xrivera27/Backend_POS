@@ -1,5 +1,7 @@
 const { getEmpresaId } = require('./empresaSvc.js');
 const { getSucursalesbyUser } = require('./sucursalUsuarioSvc.js');
+const { getEmpresaIdbyProduct } = require('./productoSvs.js');
+const { getEmpresaIdbyCategoria } = require('./catProdSvs.js');
 
 const necesitaAlertStockMin = async (producto, id_usuario, supabase) => {
     try {
@@ -16,8 +18,11 @@ const necesitaAlertStockMin = async (producto, id_usuario, supabase) => {
         }
 
         if(inventario.stock_actual < (inventario.stock_min * 0.50) + inventario.stock_min){
-            await crearAlertStockMinimo(producto, id_usuario, inventario.stock_min, inventario.stock_actual, supabase)
+            await crearAlertStockMinimo(producto, id_usuario, inventario.stock_min, inventario.stock_actual, supabase);
+            return;
         }
+        await eliminarProductoAlert(producto.id_producto, supabase);
+
 
     } catch (error) {
         console.error('Ocurrio un error: ', error);
@@ -141,8 +146,11 @@ const necesitaAlertStockMax = async (producto, id_usuario, supabase) => {
         }
 
         if(inventario.stock_actual >= inventario.stock_max ){
-            await crearAlertStockMinimo(producto, id_usuario, inventario.stock_min, inventario.stock_actual, supabase)
+            await crearAlertStockMaximo(producto, id_usuario, inventario.stock_max, inventario.stock_actual, supabase);
+            return;
         }
+
+        await eliminarProductoAlert(producto.id_producto, supabase);
 
     } catch (error) {
         console.error('Ocurrio un error: ', error);
@@ -192,4 +200,186 @@ const crearAlertStockMaximo = async (producto, id_usuario, stock_max, stock_actu
     }
 }
 
-module.exports = { crearAlertStockMinimo, necesitaAlertStockMin }
+const crearAlertPromoProduct = async (promocion, diasRestantes, supabase) => {
+    try {
+        const { resultado } = await eliminarPromoAlert(promocion.id, supabase);
+        const {id_empresa, resultado: existeEmpresa} = await getEmpresaIdbyProduct(promocion.producto_Id, supabase);
+        if(!existeEmpresa){
+            throw 'No existe este producto para una empresa';
+        }
+
+    if(!resultado){
+        throw 'No se puede generar nueva alerta por problemas del servidor al eliminar una alerta anterior';
+    }
+
+    const puntaje = (10 - diasRestantes) * 10;
+
+    const { data: alert, error: alertError } = await supabase.from('alerts')
+    .insert({
+        tipo: 'promocion_producto_entrante',
+        puntaje: Math.trunc(puntaje),
+        descripcion: `${promocion.promocion_nombre} se activara en ${diasRestantes} dias.`,
+        id_empresa: id_empresa
+    })
+    .select('id_alert');
+
+    if(alertError){
+        throw alertError;
+    }
+
+    const { error: errorPromo } = await supabase.from('alerts_promocion')
+    .insert({
+        id_alert: alert[0].id_alert,
+        id_promocion_producto: promocion.id,
+        dias_restantes: diasRestantes
+        
+    });
+
+    if(errorPromo){
+        throw errorPromo;
+    }
+
+    } catch (error) {
+        console.error('Ocurrio un error: ', error);
+    }
+}
+
+const eliminarPromoAlert = async (id_promocion, supabase) => {
+    try {
+        const {  data: id_alerta, error: errorAlerta } = await supabase.from('alerts_promocion')
+        .select('id_alert')
+        .eq('id_promocion_producto', id_promocion);
+
+        if(id_alerta.length === 0){
+            return {
+                resultado: true
+            }
+        }
+
+        const id_alert_selected = id_alerta[0].id_alert;
+
+        if(errorAlerta){
+            throw errorAlerta;
+        }
+
+        const { error: errorPromo } = await supabase.from('alerts_promocion')
+        .delete()
+        .eq('id_alert', id_alert_selected);
+
+        if(errorPromo){
+            throw errorPromo;
+        }
+
+        console.log(id_alert_selected);
+
+        const { error: errorAlert } = await supabase.from('alerts')
+        .delete()
+        .eq('id_alert', id_alert_selected);
+
+        if(errorAlert){
+            throw errorAlert;
+        }
+        
+        return {
+            resultado: true
+        }
+
+    } catch (error) {
+        console.error('Ocurrio un error al eliminar alerta: ', error);
+        return {
+            resultado: false
+        }
+    }
+}
+
+const crearAlertPromoCategory = async (promocion, diasRestantes, supabase) => {
+    try {
+        const { resultado } = await eliminarPromoAlertCategory(promocion.id, supabase);
+        const {id_empresa, resultado: existeEmpresa} = await getEmpresaIdbyCategoria(promocion.categoria_producto_Id, supabase);
+        if(!existeEmpresa){
+            throw 'No existe este producto para una empresa';
+        }
+
+    if(!resultado){
+        throw 'No se puede generar nueva alerta por problemas del servidor al eliminar una alerta anterior';
+    }
+
+    const puntaje = (10 - diasRestantes) * 10;
+
+    const { data: alert, error: alertError } = await supabase.from('alerts')
+    .insert({
+        tipo: 'promocion_categoria_entrante',
+        puntaje: Math.trunc(puntaje),
+        descripcion: `${promocion.nombre_promocion} se activara en ${diasRestantes} dias.`,
+        id_empresa: id_empresa
+    })
+    .select('id_alert');
+
+    if(alertError){
+        throw alertError;
+    }
+
+    const { error: errorPromo } = await supabase.from('alerts_promocion')
+    .insert({
+        id_alert: alert[0].id_alert,
+        id_promocion_categoria: promocion.id,
+        dias_restantes: diasRestantes
+        
+    });
+
+    if(errorPromo){
+        throw errorPromo;
+    }
+
+    } catch (error) {
+        console.error('Ocurrio un error: ', error);
+    }
+}
+
+const eliminarPromoAlertCategory = async (id_promocion, supabase) => {
+    try {
+        const {  data: id_alerta, error: errorAlerta } = await supabase.from('alerts_promocion')
+        .select('id_alert')
+        .eq('id_promocion_categoria', id_promocion);
+
+        if(id_alerta.length === 0){
+            return {
+                resultado: true
+            }
+        }
+
+        const id_alert_selected = id_alerta[0].id_alert;
+
+        if(errorAlerta){
+            throw errorAlerta;
+        }
+
+        const { error: errorPromo } = await supabase.from('alerts_promocion')
+        .delete()
+        .eq('id_alert', id_alert_selected);
+
+        if(errorPromo){
+            throw errorPromo;
+        }
+
+        const { error: errorAlert } = await supabase.from('alerts')
+        .delete()
+        .eq('id_alert', id_alert_selected);
+
+        if(errorAlert){
+            throw errorAlert;
+        }
+        
+        return {
+            resultado: true
+        }
+
+    } catch (error) {
+        console.error('Ocurrio un error al eliminar alerta: ', error);
+        return {
+            resultado: false
+        }
+    }
+}
+
+module.exports = { crearAlertStockMinimo, necesitaAlertStockMin, necesitaAlertStockMax, crearAlertPromoProduct, crearAlertPromoCategory, eliminarPromoAlert, eliminarPromoAlertCategory }

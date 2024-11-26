@@ -41,7 +41,7 @@ const restaurarInventario = async () => {
 
         Promise.all(restauraciones);
     } catch (error) {
-        
+        console.error('Ocurrio un error al elimnar roll back: ', error);
     }
 }
 

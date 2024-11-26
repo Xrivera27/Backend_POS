@@ -1,4 +1,34 @@
-const { existeIdinTable } = require('./validaciones.js');
+const { existeIdinTable } = require('./validaciones.js');   
+
+const getEmpresaIdbyCategoria = async (id_categoria, supabase) => {
+    try {
+        const { data: categoria, error } = await supabase.from('categoria_producto')
+        .select('id_categoria, id_empresa')
+        .eq('id_categoria', id_categoria)
+        .eq('estado', true);
+
+        if(!categoria || categoria.length === 0){
+            return {
+                resultado: false
+            }
+        }
+
+        if(error){
+            throw error;
+        }
+
+        return {
+            id_empresa: categoria[0].id_empresa,
+            resultado: true
+        }
+
+    } catch (error) {
+        console.error('Ocurrio un error: ', error);
+        return {
+            resultado: false
+        }
+    }
+}
 
 const catProdAdd = async (categorias, id_producto, supabase) => {
 
@@ -121,4 +151,4 @@ const conteoProdinCat = async (id_categoria_producto, supabase) => {
 
 
 
-module.exports = { catProdAdd, catProdGet, deleteCatProd, conteoProdinCat }
+module.exports = { catProdAdd, catProdGet, deleteCatProd, conteoProdinCat, getEmpresaIdbyCategoria }

@@ -448,7 +448,7 @@ const recuperarVentaGuardada = async (req, res) => {
            throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
         }
 
-      const {exitos, factura} = await calculos.calcularDetallesVenta(venta[0].id_venta, productos, supabase);
+      const {exitos, factura} = await calculos.calcularDetallesVenta(venta[0].id_venta, productos, id_usuario, supabase);
 
        if (exitos != productos.length){
         throw 'Algunos productos no fueron agregados';

@@ -14,6 +14,12 @@ const sarRoutes = require('./sarRoutes');
 const updatesarRoutes = require('./updatesarRoutes');
 const configureempresaRoutes = require('./updateempresaRoutes');
 
+
+//Administrar Compras y Ventas
+
+const AdminVentas = require('./AdminVentasRoutes');
+
+
 //empresas rutas
 const categoriaRoutes = require('./categoriaRoutes');
 const configempresaRoutes = require('./configempresaRoutes');
@@ -89,6 +95,10 @@ router.use('/unidad-medida', unidadMedidaRouter);
 //ventas y compras
 router.use('/ventas', ventasRouter);
 router.use('/compras', comprasRouter);
+
+//Administrar Ventas y Compras
+router.use('/AdminVentas', AdminVentas);
+
 
 
 module.exports = router;

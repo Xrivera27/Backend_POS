@@ -209,9 +209,9 @@ const eliminarInventarioRollBackEsp = async (inventario, id_inventario_roll_back
 
 
         if (error || errorGet) {
-            console.error(`Error al eliminar los registros de inventario para el usuario ${id_inventario_roll_back}:`, error);
+            console.error(`Error al eliminar los registros de inventario para el inventario roll back ${id_inventario_roll_back}:`, error);
         } else {
-            console.log(`Registros de inventario eliminados exitosamente para el usuario ${id_inventario_roll_back}.`);
+            console.log(`Registros de inventario eliminados exitosamente para el inventario ${id_inventario_roll_back}.`);
             await aumentarInventario(inventario, inventarioRB.cantidad, supabase);
             return inventario.cantidad;
         }

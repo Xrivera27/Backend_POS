@@ -14,22 +14,22 @@ try {
 
     if(promocionProducto.length === 0){
         return {
-            resultado: true,
+            resultado: false,
             message: 'No hay promociones para este producto.',
-            promocionProducto
+            promos: []
           }
       }
 
     return {
         resultado: true,
         message: 'Se obtuvo una promocion para este producto',
-        promocionProducto
+        promos: promocionProducto
     }
 
 } catch (error) {
     return{
         resultado: false,
-        message: 'No se obtuvo una promocion para este producto',
+        message: 'Ocurrio un error al buscar una promocion para este producto',
         error: error
     }
 }
@@ -69,22 +69,59 @@ const tienePromoCategoria = async (id_producto, supabase) => {
 
       if(promocionCategoria.length === 0){
         return {
-            resultado: true,
+            resultado: false,
             message: 'No hay promociones de categorias para este producto.',
-            promocionCategoria
+            promos: []
           }
       }
 
       return {
         resultado: true,
         message: 'Se encontraron promociones de categorias para este producto',
-        promocionCategoria
+        promos: promocionCategoria
       }
 
     } catch (error) {
         return {
             resultado: false,
+            message: 'Ocurrio un error al buscar promociones de categoria.',
             message: error
+        }
+    }
+}
+
+const tienePromoCategoriabyCategoria = async (id_categoria, supabase) => {
+    try {
+        const {data: promocionCategoria, error} = await supabase
+        .from('categoria_promocion')
+        .select('id, nombre_promocion, porcentaje_descuento')
+        .eq('categoria_producto_Id', id_categoria)
+        .eq('estado', true);
+    
+        if(error){
+            throw error;
+        }
+
+        if(promocionCategoria.length === 0){
+            return {
+                resultado: false,
+                message: 'No hay promociones para esta Categoria.',
+                promos: []
+              }
+          }
+    
+        return {
+            resultado: true,
+            message: 'Se obtuvo una promocion para esta Categoria',
+            promos: promocionCategoria
+        }
+    
+    } catch (error) {
+        console.log(error);
+        return{
+            resultado: false,
+            message: 'No se obtuvo una promocion para este producto',
+            error: error
         }
     }
 }
@@ -132,41 +169,41 @@ const obtenerPromos = async(id_producto, supabase) => {
         ];
 
         const resultados = await Promise.all(promesasPromociones);
-        const promociones = resultados[0];
-        const promocionesCategoria = resultados[1];
+        const { promos: promosProduct, message: messProduct, error: errorProduct } = resultados[0];
+        const { promos: promosCategory, message: messCategory, error: errorCategory } = resultados[1];
 
-        
-        if(!promociones.resultado){
-            throw promociones.error;
+        if(errorProduct){
+            console.error(messProduct, errorProduct);
+            throw messProduct;
         }
         
-        if(!promocionesCategoria.resultado){
-            throw promocionesCategoria.message;
+        if(errorCategory){
+            console.error(messCategory, errorCategory);
+            throw messCategory;
         }
 
-        if(promociones.promocionProducto.length === 0 && promocionesCategoria.promocionCategoria.length === 0){
+        if(promosProduct.length === 0 && promosCategory.length === 0){
             return {
                 resultado: false,
                 promocionActiva: [],
-
             }
         }
 
-        const promocionUsar = definirPrioridad(promociones.promocionProducto, promocionesCategoria.promocionCategoria);    
+        const promocionUsar = definirPrioridad(promosProduct, promosCategory);    
 
         return {resultado: true, promocionActiva: promocionUsar,                 
-            promociones: promociones,
-            promocionesCategoria: promocionesCategoria};
+            promociones: promosProduct,
+            promocionesCategoria: promosCategory};
             
         
 
     } catch (error) {
         console.log(error);
         return {
-
-            error: error
+            resultado: false,
+            error: 'Error al buscar una promocion para este producto'
         }
     }
 }
 
-module.exports = { tienePromoProducto, tienePromoCategoria, obtenerPromos }
+module.exports = { tienePromoProducto, tienePromoCategoria, tienePromoCategoriabyCategoria, obtenerPromos }

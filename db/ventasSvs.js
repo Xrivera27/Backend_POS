@@ -1,14 +1,15 @@
 const { obtenerPromos } = require('./promocionesSvs.js');
+const { necesitaAlertStockMin } = require('./alerts.js');
 
 const calculos = {
-    async calcularDetallesVenta(id_venta, productos, supabase) {
+    async calcularDetallesVenta(id_venta, productos, id_usuario, supabase) {
 
         let exitos = 0;
         let subTotalVenta = 0;
         let totalDescuento = 0
         try{
             const promesas = productos.map(async (elementoProducto) => {
-                const { totalDetalle, precio_usar, descuento } = await this.calcularDetalleProducto(elementoProducto, supabase);
+                const { totalDetalle, precio_usar, descuento } = await this.calcularDetalleProducto(elementoProducto, id_usuario, supabase);
                 
                 const { error } = await supabase.from('ventas_detalles')
                     .insert({
@@ -96,7 +97,7 @@ const calculos = {
         }
       },
 
-      async calcularDetalleProducto(elementoProducto, supabase){
+      async calcularDetalleProducto(elementoProducto, id_usuario, supabase){
         let precio_usar;
         let descuento = 0;
         try {
@@ -140,6 +141,8 @@ const calculos = {
                     }   
                 }
             }
+
+            necesitaAlertStockMin(elementoProducto, id_usuario, supabase);
 
             return { totalDetalle, precio_usar, descuento }
     

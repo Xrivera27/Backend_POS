@@ -1,6 +1,7 @@
 const cron = require("node-cron");
 const { supabase } = require('../ruta/supabaseClient.js');
 const { tienePromoProducto, tienePromoCategoriabyCategoria } = require('../db/promocionesSvs.js');
+const { eliminarPromoAlert, eliminarPromoAlertCategory } = require('../db/alerts.js');
 
 const activarPromosProducto = async () => {
     const fechaActual = new Date();
@@ -54,7 +55,7 @@ const activarPromosProducto = async () => {
             if( errorAct){
                 throw errorAct;
             }
-
+            await eliminarPromoAlert(p.id, supabase);
             return promoActivada;
         });
 
@@ -126,7 +127,7 @@ const activarPromosCategoria = async () => {
             if( errorAct){
                 throw errorAct;
             }
-
+            await  eliminarPromoAlertCategory(p.id, supabase);
             return promoActivada;
         });
 

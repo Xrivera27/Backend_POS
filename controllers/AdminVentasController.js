@@ -67,9 +67,9 @@ const obtenerVentas = async (req, res) => {
             }
 
             return {
-                codigo: venta.id_venta,
+                codigo: sarData?.numero_factura_SAR || 'N/A', // Cambiado de venta.id_venta a número de factura
                 nombre: venta.Usuarios ? `${venta.Usuarios.nombre} ${venta.Usuarios.apellido}` : 'N/A',
-                cliente: venta.Clientes ? venta.Clientes.nombre_completo : 'Consumidor Final', // Cambiado aquí
+                cliente: venta.Clientes ? venta.Clientes.nombre_completo : 'Consumidor Final',
                 subtotal: venta.sub_total || 0,
                 descuento: facturaData?.descuento || 0,
                 total: facturaData?.total || 0,
@@ -77,6 +77,7 @@ const obtenerVentas = async (req, res) => {
                 fechaHora: venta.created_at,
                 numero_factura: sarData?.numero_factura_SAR || 'N/A',
                 cai: sarData?.numero_CAI || 'N/A',
+                id_venta: venta.id_venta, // Mantenemos el id_venta pero no lo mostramos
                 id_factura: facturaData?.id_factura
             };
         });
@@ -100,7 +101,6 @@ const obtenerVentas = async (req, res) => {
         });
     }
 };
-
 const obtenerDetalleVenta = async (req, res) => {
     const { id_venta } = req.params;
     const { supabase } = req;
@@ -158,20 +158,20 @@ const obtenerDetalleVenta = async (req, res) => {
             sarData = sar;
         }
 
-        // Obtener los detalles de los productos vendidos usando la tabla Compras_detalles
+        // Obtener los detalles de los productos vendidos usando la tabla ventas_detalles
         const { data: detallesProductos, error: detallesError } = await supabase
-            .from('Compras_detalles')
+            .from('ventas_detalles')
             .select(`
                 cantidad,
-                precio_compra,
+                descuento,
                 total_detalle,
-                producto:id_producto (
+                productos:id_producto (
                     nombre,
                     codigo_producto,
                     descripcion
                 )
             `)
-            .eq('id_compra', id_venta); // Cambiado id_factura por id_compra ya que es una venta
+            .eq('id_venta', id_venta);
 
         if (detallesError) {
             console.error('Error al obtener detalles de productos:', detallesError);
@@ -193,14 +193,12 @@ const obtenerDetalleVenta = async (req, res) => {
             cai: sarData?.numero_CAI || 'N/A',
             estado: venta.estado,
             productos: detallesProductos.map(detalle => ({
-                nombre: detalle.producto.nombre,
-                codigo: detalle.producto.codigo_producto,
-                descripcion: detalle.producto.descripcion,
+                nombre: detalle.productos.nombre,
+                codigo: detalle.productos.codigo_producto,
+                descripcion: detalle.productos.descripcion,
                 cantidad: detalle.cantidad,
-                precio_unitario: detalle.precio_compra,
-                subtotal: detalle.total_detalle,
-                // Si no hay descuento en la tabla de Compras_detalles, lo ponemos en 0
-                descuento: 0,
+                descuento: detalle.descuento || 0,
+                precio_unitario: detalle.total_detalle / detalle.cantidad, // Calculando el precio unitario
                 total: detalle.total_detalle
             }))
         };

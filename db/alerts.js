@@ -18,8 +18,11 @@ const necesitaAlertStockMin = async (producto, id_usuario, supabase) => {
         }
 
         if(inventario.stock_actual < (inventario.stock_min * 0.50) + inventario.stock_min){
-            await crearAlertStockMinimo(producto, id_usuario, inventario.stock_min, inventario.stock_actual, supabase)
+            await crearAlertStockMinimo(producto, id_usuario, inventario.stock_min, inventario.stock_actual, supabase);
+            return;
         }
+        await eliminarProductoAlert(producto.id_producto, supabase);
+
 
     } catch (error) {
         console.error('Ocurrio un error: ', error);
@@ -143,8 +146,11 @@ const necesitaAlertStockMax = async (producto, id_usuario, supabase) => {
         }
 
         if(inventario.stock_actual >= inventario.stock_max ){
-            await crearAlertStockMaximo(producto, id_usuario, inventario.stock_max, inventario.stock_actual, supabase)
+            await crearAlertStockMaximo(producto, id_usuario, inventario.stock_max, inventario.stock_actual, supabase);
+            return;
         }
+
+        await eliminarProductoAlert(producto.id_producto, supabase);
 
     } catch (error) {
         console.error('Ocurrio un error: ', error);

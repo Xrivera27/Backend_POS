@@ -6,7 +6,7 @@ const {
     addInventarioRollBack
 } = require('../db/inventarioSvc');
 
-const { necesitaAlertStockMax } = require('../db/alerts.js');
+const { necesitaAlertStockMax, necesitaAlertStockMin } = require('../db/alerts.js');
 
 const { getEmpresaId } = require('../db/empresaSvc');
 
@@ -205,10 +205,10 @@ const registrarCompra = async (req, res) => {
                 //     cantidad: cantidadTotal
                 // });
 
-                console.log(productoActual);
-
                 await aumentarInventario(inventario, cantidadTotal, supabase);
                 necesitaAlertStockMax(productoActual, id_usuario, supabase);
+                necesitaAlertStockMin(productoActual, id_usuario, supabase);
+                
               //  console.log('10. Stock actualizado correctamente');
             } catch (errorStock) {
                 console.error('Error al aumentar stock:', errorStock);

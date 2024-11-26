@@ -126,4 +126,70 @@ const eliminarProductoAlert = async (id_producto, supabase) => {
     }
 }
 
+const necesitaAlertStockMax = async (producto, id_usuario, supabase) => {
+    try {
+        const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+
+        const { data: inventario, error } = await supabase.from('inventarios')
+        .select('stock_max, stock_actual')
+        .eq('id_producto', producto.id_producto)
+        .eq('id_sucursal', id_sucursal)
+        .single();
+
+        if(error){
+            throw error;
+        }
+
+        if(inventario.stock_actual >= inventario.stock_max ){
+            await crearAlertStockMinimo(producto, id_usuario, inventario.stock_min, inventario.stock_actual, supabase)
+        }
+
+    } catch (error) {
+        console.error('Ocurrio un error: ', error);
+    }
+}
+
+const crearAlertStockMaximo = async (producto, id_usuario, stock_max, stock_actual, supabase) => {
+    try {
+        const { resultado } = await eliminarProductoAlert(producto.id_producto, supabase);
+        const id_empresa = await getEmpresaId(id_usuario, supabase);
+        const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+
+    if(!resultado){
+        throw 'No se puede generar nueva alerta por problemas del servidor al eliminar una alerta anterior';
+    }
+
+    const puntaje = 20;
+
+    const { data: alert, error: alertError } = await supabase.from('alerts')
+    .insert({
+        tipo: 'stock_maximo',
+        puntaje: Math.trunc(puntaje),
+        descripcion: `${producto.nombre} tiene ${stock_actual} unidades disponibles en el inventario y el stock maximo es: ${stock_max}`,
+        id_empresa: id_empresa
+    })
+    .select('id_alert');
+
+    if(alertError){
+        throw alertError;
+    }
+
+    const { error: errorStock } = await supabase.from('alerts_stocks')
+    .insert({
+        id_alert: alert[0].id_alert,
+        id_producto: producto.id_producto,
+        id_sucursal: id_sucursal,
+        stock_actual: stock_actual,
+        stock_limite: stock_max
+    });
+
+    if(errorStock){
+        throw errorStock;
+    }
+
+    } catch (error) {
+        console.error('Ocurrio un error: ', error);
+    }
+}
+
 module.exports = { crearAlertStockMinimo, necesitaAlertStockMin }

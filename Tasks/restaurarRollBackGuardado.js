@@ -59,6 +59,9 @@ async function eliminarCompraGuardadas(inventario) {
 const restaurarInventario = async () => {
     try {
         const inventariosRB = await getRollBacksVencidos();
+        if(!inventariosRB || inventariosRB.length === 0 || inventariosRB === null){
+            return;
+        }
 
         const setNulls = inventariosRB.map(async inventario => {
             const setNull = await setNullRollBack(inventario.id_compra_guardada, supabase);

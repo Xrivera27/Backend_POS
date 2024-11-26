@@ -5,6 +5,9 @@ const {
     aumentarInventario,
     addInventarioRollBack
 } = require('../db/inventarioSvc');
+
+const { necesitaAlertStockMax } = require('../db/alerts.js');
+
 const { getEmpresaId } = require('../db/empresaSvc');
 
 // Función auxiliar para obtener el ID de usuario
@@ -21,7 +24,7 @@ const obtenerProductos = async (req, res) => {
 
     try {
         const id_usuario = getUserId(req);
-        console.log('1. ID de usuario recibido:', id_usuario);
+      //  console.log('1. ID de usuario recibido:', id_usuario);
 
         // Verificar que tenemos el objeto supabase
         if (!supabase) {
@@ -29,7 +32,7 @@ const obtenerProductos = async (req, res) => {
         }
 
         const id_empresa = await getEmpresaId(id_usuario, supabase);
-        console.log('2. ID empresa obtenido:', id_empresa);
+     //   console.log('2. ID empresa obtenido:', id_empresa);
 
         const { data: productos, error } = await supabase
             .from('producto')
@@ -78,7 +81,7 @@ const registrarCompra = async (req, res) => {
 
         // Obtener el id_sucursal primero
         const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
-        console.log('2. Sucursal obtenida:', id_sucursal);
+      //  console.log('2. Sucursal obtenida:', id_sucursal);
 
         // Obtener el producto completo del primer item
         const { data: productoInfo, error: errorProducto } = await supabase
@@ -106,7 +109,7 @@ const registrarCompra = async (req, res) => {
             metodo_pago: 'EFECTIVO'
         };
 
-        console.log('3. Datos de compra a insertar:', compraData);
+     //   console.log('3. Datos de compra a insertar:', compraData);
 
         const { data: compra, error: errorCompra } = await supabase
             .from('Compras')
@@ -123,16 +126,16 @@ const registrarCompra = async (req, res) => {
             throw new Error('No se pudo obtener el ID de la compra registrada');
         }
 
-        console.log('4. Compra registrada:', compra);
+      //  console.log('4. Compra registrada:', compra);
 
         // Procesar productos
         for (const producto of productosLista) {
-            console.log('5. Procesando producto:', producto);
+          //  console.log('5. Procesando producto:', producto);
 
             // Obtener el id_producto real
             const { data: productoActual, error: errorProductoActual } = await supabase
                 .from('producto')
-                .select('id_producto')
+                .select('id_producto, nombre')
                 .eq('codigo_producto', producto.codigo)
                 .single();
 
@@ -144,13 +147,13 @@ const registrarCompra = async (req, res) => {
             const cantidadPaquetes = Number(producto.paquetes) || 1;
             const cantidadTotal = cantidadUnitaria * cantidadPaquetes;
 
-            console.log('6. Cantidad total calculada:', cantidadTotal);
+       //     console.log('6. Cantidad total calculada:', cantidadTotal);
 
             // Buscar o crear inventario
             let inventario = await buscarProductoInventario(productoActual.id_producto, id_sucursal, supabase);
             
             if (!inventario) {
-                console.log('7. Creando nuevo inventario para producto:', productoActual.id_producto);
+             //   console.log('7. Creando nuevo inventario para producto:', productoActual.id_producto);
                 try {
                     const { data: nuevoInventario, error: errorInventario } = await supabase
                         .from('inventarios')
@@ -171,7 +174,7 @@ const registrarCompra = async (req, res) => {
                     }
 
                     inventario = nuevoInventario;
-                    console.log('8. Nuevo inventario creado:', inventario);
+                 //   console.log('8. Nuevo inventario creado:', inventario);
                 } catch (errorInventario) {
                     console.error('Error detallado:', errorInventario);
                     throw new Error(`Error al crear inventario: ${errorInventario.message}`);
@@ -197,13 +200,16 @@ const registrarCompra = async (req, res) => {
             }
 
             try {
-                console.log('9. Aumentando stock:', {
-                    id_inventario: inventario.id_inventario,
-                    cantidad: cantidadTotal
-                });
+                // console.log('9. Aumentando stock:', {
+                //     id_inventario: inventario.id_inventario,
+                //     cantidad: cantidadTotal
+                // });
+
+                console.log(productoActual);
 
                 await aumentarInventario(inventario, cantidadTotal, supabase);
-                console.log('10. Stock actualizado correctamente');
+                necesitaAlertStockMax(productoActual, id_usuario, supabase);
+              //  console.log('10. Stock actualizado correctamente');
             } catch (errorStock) {
                 console.error('Error al aumentar stock:', errorStock);
                 throw new Error(`Error al actualizar stock: ${errorStock.message}`);
@@ -211,7 +217,7 @@ const registrarCompra = async (req, res) => {
 
             // Registrar en rollback
             await addInventarioRollBack(inventario.id_inventario, id_usuario, cantidadTotal, supabase);
-            console.log('11. Rollback registrado');
+          //  console.log('11. Rollback registrado');
         }
 
         res.status(200).json({

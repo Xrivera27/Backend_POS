@@ -141,7 +141,7 @@ const necesitaAlertStockMax = async (producto, id_usuario, supabase) => {
         }
 
         if(inventario.stock_actual >= inventario.stock_max ){
-            await crearAlertStockMinimo(producto, id_usuario, inventario.stock_min, inventario.stock_actual, supabase)
+            await crearAlertStockMaximo(producto, id_usuario, inventario.stock_max, inventario.stock_actual, supabase)
         }
 
     } catch (error) {
@@ -192,4 +192,4 @@ const crearAlertStockMaximo = async (producto, id_usuario, stock_max, stock_actu
     }
 }
 
-module.exports = { crearAlertStockMinimo, necesitaAlertStockMin }
+module.exports = { crearAlertStockMinimo, necesitaAlertStockMin, necesitaAlertStockMax }

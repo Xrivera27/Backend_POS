@@ -59,7 +59,6 @@ const activarPromosProducto = async () => {
         });
 
         const promosActivadas = await Promise.all(activarPromos);
-
         
         return {
             promosProducto: promosActivadas,
@@ -102,10 +101,6 @@ const activarPromosCategoria = async () => {
                 return error;
             }
         });
-
-        
-
-        
 
         const promosFiltrados = await Promise.all(totalPromos);
         const sinNull = promosFiltrados.filter(p => p !== null);
@@ -151,7 +146,7 @@ const activarPromosCategoria = async () => {
     }
 }
 
-cron.schedule('* * * * * *', async () => {
+cron.schedule('50 1 * * *', async () => {
     try {
         const getPromos = [
             activarPromosProducto(),

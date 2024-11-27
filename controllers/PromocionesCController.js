@@ -1,7 +1,7 @@
 const TABLA_CATEGORIA_PROMOCION = 'categoria_promocion';
 const TABLA_CATEGORIA = 'categoria_producto';
 const { getEmpresaId } = require('../db/empresaSvc');
-const { eliminarPromoAlertCategory } = require('../db/alerts.js');
+const { eliminarPromoAlertCategory, crearAlertPromoCategory } = require('../db/alerts.js');
 
 const getCategoriasPromocionEmpresa = async (req, res) => {
     const supabase = req.supabase;
@@ -237,6 +237,13 @@ const patchCategoriaPromocion = async (req, res) => {
 
         if (errorUpdate) throw errorUpdate;
 
+        const fechaInicio = new Date(fecha_inicio);
+        const fechaActual = new Date();
+
+        //console.log(calcularDiasFaltantes(fechaActual, fechaInicio));
+
+        crearAlertPromoCategory(promocion[0], calcularDiasFaltantes(fechaActual, fechaInicio), supabase);
+
         res.status(200).json(promocion[0]);
     } catch (error) {
         console.error('Error completo:', error);
@@ -415,6 +422,19 @@ const getCategoriasEmpresa = async (req, res) => {
         res.status(500).json({ error: 'Error al obtener categorías', details: error.message });
     }
 };
+
+function calcularDiasFaltantes(fechaActual, fechaInicioPromo) {
+
+    const fechaActualObj = new Date(fechaActual);
+    const fechaInicioObj = new Date(fechaInicioPromo);
+
+    const diferenciaMilisegundos = fechaInicioObj - fechaActualObj;
+
+    const diasFaltantes = Math.ceil(diferenciaMilisegundos / (1000 * 60 * 60 * 24));
+
+    return diasFaltantes;
+}
+
 
 module.exports = {
     getCategoriasPromocionEmpresa,

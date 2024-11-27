@@ -30,14 +30,25 @@ const getProveedoresbyUsuario = async (req, res) => {
 
     let proveedoresActivos = []
 
-    for (const proveedor of proveedores){
-       const esActivo = await filtroProveedoresActivos(proveedor.id, id_empresa_param, supabase);
+    // for (const proveedor of proveedores){
+    //    const esActivo = await filtroProveedoresActivos(proveedor.id, id_empresa_param, supabase);
 
-       if (esActivo && proveedor.estado == true){
+    //    if (esActivo && proveedor.estado == true){
         
-        proveedoresActivos.push(proveedor);
-       }
-    }
+    //     proveedoresActivos.push(proveedor);
+    //    }
+    // }
+
+    const promesas = proveedores.map(async (p) => {
+        const esActivo = await filtroProveedoresActivos(p.id, id_empresa_param, supabase);
+        if (esActivo && p.estado == true){
+        
+            proveedoresActivos.push(p);
+           }
+    });
+
+    await Promise.all(promesas);
+
     if(error){
         return res.status(500);
     }

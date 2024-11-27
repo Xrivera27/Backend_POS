@@ -51,9 +51,15 @@ const getUsuarioOfEmpresa = async (req, res) => {
       .filter( usuario => usuario.id_rol != 4 )
       .filter( usuario => usuario.estado == true );
 
-      for (const usuario of filtroUsers){
-        usuario.sucursales= await getSucursalesbyUser(usuario.id_usuario, supabase);
-      }
+     // for (const usuario of filtroUsers){
+       // usuario.sucursales= await getSucursalesbyUser(usuario.id_usuario, supabase);
+      //}
+
+      const promesas = filtroUsers.map(async (u) => {
+        usuarios.sucursales = await getSucursalesbyUser(u.id_usuario, supabase);
+      });
+
+      await Promise.all(promesas),
 
       res.status(200).json(filtroUsers);
 

@@ -1,7 +1,7 @@
 const TABLA_PROMOCIONES = 'Producto_promocion';
 const TABLA_PRODUCTO = 'producto';
 const { getEmpresaId } = require('../db/empresaSvc');
-const { eliminarPromoAlert } = require('../db/alerts');
+const { eliminarPromoAlert, crearAlertPromoProduct } = require('../db/alerts');
 
 const getPromocionesEmpresa = async (req, res) => {
     const supabase = req.supabase;
@@ -203,6 +203,12 @@ const patchPromocion = async (req, res) => {
             .select('*');
 
         if (errorUpdate) throw errorUpdate;
+        const fechaInicio = new Date(fecha_inicio);
+        const fechaActual = new Date();
+
+        //console.log(calcularDiasFaltantes(fechaActual, fechaInicio));
+
+        crearAlertPromoProduct(promocion[0], calcularDiasFaltantes(fechaActual, fechaInicio), supabase);
 
         res.status(200).json(promocion[0]);
     } catch (error) {
@@ -351,6 +357,19 @@ const getProductosEmpresa = async (req, res) => {
         res.status(500).json({ error: 'Error al obtener productos', details: error.message });
     }
 };
+
+function calcularDiasFaltantes(fechaActual, fechaInicioPromo) {
+
+    const fechaActualObj = new Date(fechaActual);
+    const fechaInicioObj = new Date(fechaInicioPromo);
+
+    const diferenciaMilisegundos = fechaInicioObj - fechaActualObj;
+
+    const diasFaltantes = Math.ceil(diferenciaMilisegundos / (1000 * 60 * 60 * 24));
+
+    return diasFaltantes;
+}
+
 
 module.exports = {
     getPromocionesEmpresa,

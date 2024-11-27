@@ -354,6 +354,9 @@ const crearAlertPromoProduct = async (promocion, diasRestantes, supabase) => {
     }
 
     const puntaje = (10 - diasRestantes) * 10;
+    if(puntaje > 100){
+        return;
+    }
 
     const { data: alert, error: alertError } = await supabase.from('alerts')
     .insert({

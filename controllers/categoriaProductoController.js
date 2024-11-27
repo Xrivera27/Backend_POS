@@ -36,10 +36,6 @@ const getCategoriaProductoOfEmpresa = async (req, res) => {
             res.status(500).json({ Error: 'Error al obtener categorias' + error.message });
         }
 
-        // for ( const elemento of data){
-        //     elemento.totalProd = await conteoProdinCat(elemento.id_categoria, supabase);
-        // }
-
         const promesas = data.map(async(elemento) =>{
             elemento.totalProd = await conteoProdinCat(elemento.id_categoria, supabase);
         });

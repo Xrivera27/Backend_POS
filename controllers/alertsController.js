@@ -26,10 +26,18 @@ const getAlertas = async (req, res) => {
             return res.status(200).json(alertas);
         }
         else if(id_rol_usuario === 1){
-            await getAlertAmdministrador(id_usuario, supabase);
-          return res.status(200).json({
-                message: 'Aun no esta implementado.'
-            });
+            const { alertas, error } =  await getAlertAmdministrador(id_usuario, supabase);
+            if(error){
+                throw 'Ocurrio un error al obtener las alertas';
+            }
+
+            if(alertas.length === 0){
+                return res.status(200).json({
+                     message: 'Aun no hay alertas para esta empresa.'
+                 });
+             }
+ 
+             return res.status(200).json(alertas);
         }
 
         else {

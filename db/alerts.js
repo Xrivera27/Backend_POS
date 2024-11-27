@@ -7,7 +7,7 @@ const getAlertCeo = async(id_usuario, supabase) => {
     try {
         const id_empresa = await getEmpresaId(id_usuario, supabase);
         const { data: alerts, error } = await supabase.from('alerts')
-        .select('tipo, descripcion, puntaje')
+        .select('id_alert, tipo, descripcion, puntaje')
         .eq('id_empresa', id_empresa);
 
         if(error){
@@ -63,14 +63,9 @@ const getAlertAmdministrador = async(id_usuario, supabase) => {
     try {
         const id_empresa = await getEmpresaId(id_usuario, supabase);
         const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
-        let alertas_stocks;
-        
-//         .from('tabla_general')
-//   .select('*')
-//   .or(
-//     `id_general.in.(select id_general from tabla_detalles1 where id_usuario = ${idUsuario}),` +
-//     `id_general.in.(select id_general from tabla_detalles2 where id_empresa = ${idEmpresa})`
-//   );
+        let alertas_stocks = [];
+        let alertas_promos = [];
+        let total_alerts = [];
 
 const { data: id_stocks, error: errorStocks } = await supabase.from('alerts_stocks')
 .select('id_alert')
@@ -80,8 +75,7 @@ const { data: id_stocks, error: errorStocks } = await supabase.from('alerts_stoc
             throw errorStocks;
         }
 
-
-        if(id_stocks.length !== 0 || alerts){
+        if(id_stocks.length !== 0 || id_stocks){
             const alertIds = id_stocks.map(stock => stock.id_alert);
             const { data, error: errorAlertsStocks } = await supabase.from('alerts')
             .select('id_alert, tipo, descripcion, puntaje')
@@ -92,58 +86,52 @@ const { data: id_stocks, error: errorStocks } = await supabase.from('alerts_stoc
                     }
 
                     alertas_stocks = data;
-
         }
-
-        const { data: id_promos, error: errorPromos } = await supabase.from('alerts_promocion')
-.select('id_alert')
-.eq('id_sucursal', id_sucursal);
-
         if(errorStocks){
             throw errorStocks;
         }
 
+        const { data: alertassinFiltro, error } = await supabase.from('alerts')
+        .select('id_alert, tipo, descripcion, puntaje')
+        .eq('id_empresa', id_empresa);
 
-        if(id_stocks.length !== 0 || alerts){
-            const alertIds = id_stocks.map(stock => stock.id_alert);
-            const { data, error: errorAlertsStocks } = await supabase.from('alerts')
-            .select('id_alert, tipo, descripcion, puntaje')
-            .in('id_alert', alertIds);
-            
-                    if(errorAlertsStocks){
-                        throw errorAlertsStocks;
-                    }
-
-                    alertas_stocks = data;
-
+        if(error){
+            throw error;
         }
 
-        // alerts.forEach(element => {
-        //     switch(element.tipo){
-        //         case 'stock_minimo':
-        //             element.name = 'Stock Bajo';
-        //             break;
+    if(alertassinFiltro.length !== 0){
 
-        //         case 'stock_maximo':
-        //             element.name = 'Stock Alto';
-        //             break;
-                
-        //         case 'promocion_producto_entrante':
-        //             element.name = 'Promocion de Producto';
-        //             break;
+         alertas_promos = alertassinFiltro.filter(a => a.tipo === 'promocion_producto_entrante' || a.tipo === 'promocion_categoria_entrante' );
+    }
 
-        //         case 'promocion_categoria_entrante':
-        //             element.name = 'Promocion de Categoria';
-        //             break;
+    total_alerts = alertas_stocks.concat(alertas_promos);
+
+    total_alerts.forEach(element => {
+            switch(element.tipo){
+                case 'stock_minimo':
+                    element.name = 'Stock Bajo';
+                    break;
+
+                case 'stock_maximo':
+                    element.name = 'Stock Alto';
+                    break;
                 
-        //         default: console.error('Ocurrio un error al mostrar una alerta', 'Tipo alerta no existe');
-        //         break;
-        //     }
-        // });
+                case 'promocion_producto_entrante':
+                    element.name = 'Promocion de Producto';
+                    break;
+
+                case 'promocion_categoria_entrante':
+                    element.name = 'Promocion de Categoria';
+                    break;
+                
+                default: console.error('Ocurrio un error al mostrar una alerta', 'Tipo alerta no existe');
+                break;
+            }
+        });
 
         return {
             resultado: true,
-            alertas: []
+            alertas: total_alerts
         }
 
     } catch (error) {

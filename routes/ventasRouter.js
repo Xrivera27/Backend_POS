@@ -16,10 +16,12 @@ const { getPrePage,
     cajaAbiertaUsuario,
     crearCajaUsuario,
     cerrarCajaUsuario,
+    generarFactura,
     ///promos
 
     pruebaPromos
 } = require('../controllers/ventasController');
+
 
 // Ruta para obtener información del usuario logueado (requiere token)
 router.get('/:id_usuario', getPrePage);
@@ -37,6 +39,9 @@ router.patch('/cerrar-caja', cerrarCajaUsuario);
 router.patch('/eliminar-producto/:id_usuario', eliminarProductoVenta);
 router.patch('/pagar-efectivo', pagarFacturaEfectivo);
 router.delete('/eliminar-venta/:id_venta/:id_factura', eliminarVenta);
+
+// Añadir esta línea junto con las otras rutas
+router.get('/factura/:id_venta/:id_usuario', generarFactura);
 
 
 ///promos

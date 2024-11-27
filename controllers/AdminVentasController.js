@@ -13,7 +13,7 @@ const obtenerVentas = async (req, res) => {
         const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
         console.log('1. Sucursal obtenida:', id_sucursal);
 
-        // Primero obtener las ventas con sus relaciones más importantes
+        // Obtener todas las ventas de una vez
         const { data: ventas, error: errorVentas } = await supabase
             .from('Ventas')
             .select(`
@@ -34,40 +34,42 @@ const obtenerVentas = async (req, res) => {
             .eq('estado', 'Pagada')
             .order('id_venta', { ascending: true });
 
-        if (errorVentas) {
-            console.error('Error al obtener ventas:', errorVentas);
-            throw new Error('Error al obtener las ventas');
-        }
+        if (errorVentas) throw new Error('Error al obtener las ventas');
 
-        console.log('2. Ventas encontradas:', ventas?.length || 0);
+        // Obtener todas las facturas de una vez
+        const { data: facturas, error: errorFacturas } = await supabase
+            .from('facturas')
+            .select('*')
+            .in('id_venta', ventas.map(v => v.id_venta));
 
-        // Procesar cada venta para obtener sus facturas y datos SAR
-        const ventasPromises = ventas.map(async (venta) => {
-            // Obtener la factura relacionada
-            const { data: facturaData, error: facturaError } = await supabase
-                .from('facturas')
-                .select('*')
-                .eq('id_venta', venta.id_venta)
-                .single();
+        if (errorFacturas) throw new Error('Error al obtener las facturas');
 
-            if (facturaError) {
-                console.log(`No se encontró factura para la venta ${venta.id_venta}`);
-                return null;
-            }
+        // Obtener todos los datos SAR de una vez
+        const { data: sarData, error: errorSAR } = await supabase
+            .from('factura_SAR')
+            .select('numero_factura_SAR, numero_CAI, id_factura')
+            .in('id_factura', facturas.map(f => f.id_factura));
 
-            // Obtener datos SAR si existe factura
-            let sarData = null;
-            if (facturaData) {
-                const { data: sar } = await supabase
-                    .from('factura_SAR')
-                    .select('numero_factura_SAR, numero_CAI')
-                    .eq('id_factura', facturaData.id_factura)
-                    .single();
-                sarData = sar;
-            }
+        if (errorSAR) throw new Error('Error al obtener datos SAR');
+
+        // Crear mapas para búsqueda rápida
+        const facturasMap = facturas.reduce((acc, factura) => {
+            acc[factura.id_venta] = factura;
+            return acc;
+        }, {});
+
+        const sarMap = sarData.reduce((acc, sar) => {
+            acc[sar.id_factura] = sar;
+            return acc;
+        }, {});
+
+        // Formatear ventas en una sola pasada
+        const ventasFormateadas = ventas.map(venta => {
+            const facturaData = facturasMap[venta.id_venta];
+            const sarInfo = facturaData ? sarMap[facturaData.id_factura] : null;
 
             return {
-                codigo: sarData?.numero_factura_SAR || 'N/A', // Cambiado de venta.id_venta a número de factura
+                codigo: sarInfo?.numero_factura_SAR || 'N/A',
                 nombre: venta.Usuarios ? `${venta.Usuarios.nombre} ${venta.Usuarios.apellido}` : 'N/A',
                 cliente: venta.Clientes ? venta.Clientes.nombre_completo : 'Consumidor Final',
                 subtotal: venta.sub_total || 0,
@@ -75,17 +77,12 @@ const obtenerVentas = async (req, res) => {
                 total: facturaData?.total || 0,
                 total_impuesto: facturaData ? (facturaData.ISV_15 || 0) + (facturaData.ISV_18 || 0) : 0,
                 fechaHora: venta.created_at,
-                numero_factura: sarData?.numero_factura_SAR || 'N/A',
-                cai: sarData?.numero_CAI || 'N/A',
-                id_venta: venta.id_venta, // Mantenemos el id_venta pero no lo mostramos
+                numero_factura: sarInfo?.numero_factura_SAR || 'N/A',
+                cai: sarInfo?.numero_CAI || 'N/A',
+                id_venta: venta.id_venta,
                 id_factura: facturaData?.id_factura
             };
-        });
-
-        const ventasFormateadas = (await Promise.all(ventasPromises))
-            .filter(venta => venta !== null);
-
-        console.log('3. Ventas formateadas final:', ventasFormateadas.length);
+        }).filter(v => v !== null);
 
         res.status(200).json({
             success: true,
@@ -101,6 +98,8 @@ const obtenerVentas = async (req, res) => {
         });
     }
 };
+
+
 const obtenerDetalleVenta = async (req, res) => {
     const { id_venta } = req.params;
     const { supabase } = req;
@@ -111,43 +110,65 @@ const obtenerDetalleVenta = async (req, res) => {
             throw new Error('Usuario no autenticado');
         }
 
-        // Obtener la venta con sus relaciones básicas
-        const { data: venta, error: ventaError } = await supabase
-            .from('Ventas')
-            .select(`
-                id_venta,
-                created_at,
-                sub_total,
-                estado,
-                Usuarios (
-                    nombre,
-                    apellido
-                ),
-                Clientes (
-                    nombre_completo,
-                    rtn
-                )
-            `)
-            .eq('id_venta', id_venta)
-            .single();
+        // Realizar todas las consultas en paralelo
+        const [
+            ventaResult,
+            facturaResult,
+            detallesResult
+        ] = await Promise.all([
+            // Consulta de venta
+            supabase
+                .from('Ventas')
+                .select(`
+                    id_venta,
+                    created_at,
+                    sub_total,
+                    estado,
+                    Usuarios (
+                        nombre,
+                        apellido
+                    ),
+                    Clientes (
+                        nombre_completo,
+                        rtn
+                    )
+                `)
+                .eq('id_venta', id_venta)
+                .single(),
 
-        if (ventaError || !venta) {
-            throw new Error('Venta no encontrada');
-        }
+            // Consulta de factura
+            supabase
+                .from('facturas')
+                .select('*')
+                .eq('id_venta', id_venta)
+                .single(),
 
-        // Obtener la factura
-        const { data: factura, error: facturaError } = await supabase
-            .from('facturas')
-            .select('*')
-            .eq('id_venta', id_venta)
-            .single();
+            // Consulta de detalles y productos
+            supabase
+                .from('ventas_detalles')
+                .select(`
+                    cantidad,
+                    descuento,
+                    total_detalle,
+                    productos:id_producto (
+                        nombre,
+                        codigo_producto,
+                        descripcion
+                    )
+                `)
+                .eq('id_venta', id_venta)
+        ]);
 
-        if (facturaError) {
-            console.error('Error al obtener factura:', facturaError);
-            throw new Error('Error al obtener detalles de la factura');
-        }
+        // Verificar errores de las consultas principales
+        if (ventaResult.error) throw new Error('Venta no encontrada');
+        if (facturaResult.error) throw new Error('Error al obtener detalles de la factura');
+        if (detallesResult.error) throw new Error('Error al obtener detalles de los productos');
 
-        // Obtener datos SAR
+        const venta = ventaResult.data;
+        const factura = facturaResult.data;
+        const detallesProductos = detallesResult.data;
+
+        // Si hay factura, obtener datos SAR
         let sarData = null;
         if (factura) {
             const { data: sar } = await supabase
@@ -156,26 +177,6 @@ const obtenerDetalleVenta = async (req, res) => {
                 .eq('id_factura', factura.id_factura)
                 .single();
             sarData = sar;
-        }
-
-        // Obtener los detalles de los productos vendidos usando la tabla ventas_detalles
-        const { data: detallesProductos, error: detallesError } = await supabase
-            .from('ventas_detalles')
-            .select(`
-                cantidad,
-                descuento,
-                total_detalle,
-                productos:id_producto (
-                    nombre,
-                    codigo_producto,
-                    descripcion
-                )
-            `)
-            .eq('id_venta', id_venta);
-
-        if (detallesError) {
-            console.error('Error al obtener detalles de productos:', detallesError);
-            throw new Error('Error al obtener detalles de los productos');
         }
 
         // Formatear respuesta
@@ -198,7 +199,7 @@ const obtenerDetalleVenta = async (req, res) => {
                 descripcion: detalle.productos.descripcion,
                 cantidad: detalle.cantidad,
                 descuento: detalle.descuento || 0,
-                precio_unitario: detalle.total_detalle / detalle.cantidad, // Calculando el precio unitario
+                precio_unitario: detalle.total_detalle / detalle.cantidad,
                 total: detalle.total_detalle
             }))
         };

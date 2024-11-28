@@ -420,7 +420,7 @@ const recuperarVentaGuardada = async (req, res) => {
     const supabase = req.supabase;
     const {
         id_cliente,
-        productos
+        productos,
 
      } = req.body;
 
@@ -529,7 +529,7 @@ const recuperarVentaGuardada = async (req, res) => {
 
   const pagarFacturaEfectivo = async (req, res) => {
     const supabase = req.supabase;
-    const { pago, id_venta, id_usuario } = req.body;
+    const { pago, id_venta, id_usuario, descripcion } = req.body;
 
     try {
 
@@ -556,11 +556,11 @@ const recuperarVentaGuardada = async (req, res) => {
         .update({
             pago: pago,
             cambio: pago - totalFactura,
-            tipo_factura: "Efectivo"
+            tipo_factura: "Efectivo",
         }).select('cambio')
         .eq('id_venta', id_venta),
         calculos.actualizarSaldoCaja(caja, totalFactura, supabase),
-        calculos.cambiarEstadoVenta(id_venta, supabase, 'Pagada'),
+        calculos.cambiarEstadoVenta(id_venta, supabase, descripcion,'Pagada'),
         eliminarInventarioRollBack( id_usuario, supabase)
         ];
 

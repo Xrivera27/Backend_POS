@@ -392,11 +392,11 @@ const calculos = {
         }
       },
     
-      async cambiarEstadoVenta(id_venta, supabase, estado){
+      async cambiarEstadoVenta(id_venta, supabase, descripcion, estado){
         try {
             const { data: venta, error } = await supabase.from('Ventas')
             .update({
-                estado: estado
+                estado: estado, descripcion: descripcion
             })
             .select('estado')
             .eq('id_venta', id_venta);

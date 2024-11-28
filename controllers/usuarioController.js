@@ -1,6 +1,7 @@
 const { response } = require('express');
 const { insertarRelacion, getSucursalesbyUser } = require('../db/sucursalUsuarioSvc.js');
 const { getEmpresaId } = require('../db/empresaSvc.js');
+const { getRolByUsuario } = require('../db/validaciones.js');
 
 
 const getUsuario = async (req, res) => {
@@ -32,6 +33,21 @@ const getUsuario = async (req, res) => {
     res.status(500).json({ error: 'Error inesperado al obtener usuario' });
   }
 };
+
+const getRolUsuario = async (req, res) => {
+  const supabase = req.supabase;
+  try {
+
+    const id_usuario = req.params.id_usuario;
+    const id_rol = await getRolByUsuario(id_usuario, supabase);
+    
+    res.status(200).json(id_rol);
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({error: error});
+  }
+}
 
 const getUsuarioOfEmpresa = async (req, res) => {
   const supabase = req.supabase;
@@ -187,5 +203,5 @@ const desactivarUsuario = async (req, res) => {
 }
 
 module.exports = {
-  getUsuario, getUsuarioOfEmpresa, postUsuario, patchUsuario, desactivarUsuario
+  getUsuario, getRolUsuario, getUsuarioOfEmpresa, postUsuario, patchUsuario, desactivarUsuario
 };

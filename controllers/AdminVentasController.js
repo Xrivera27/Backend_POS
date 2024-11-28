@@ -504,8 +504,77 @@ const generarFactura = async (req, res) => {
     }
 };
 
+
+const cancelarVenta = async (req, res) => {
+    const { supabase } = req;
+    const { id_venta } = req.params;
+    const { description } = req.body;
+
+    try {
+        const id_usuario = req.user?.id || req.user?.id_usuario;
+        if (!id_usuario) {
+            throw new Error('Usuario no autenticado');
+        }
+
+        // Iniciar transacción
+        const { data: venta, error: ventaError } = await supabase
+            .from('Ventas')
+            .select(`
+                id_venta,
+                estado,
+                id_sucursal,
+                ventas_detalles (
+                    id_producto,
+                    cantidad
+                )
+            `)
+            .eq('id_venta', id_venta)
+            .single();
+
+        if (ventaError) throw new Error('Venta no encontrada');
+        if (venta.estado === 'Cancelada') throw new Error('La venta ya está cancelada');
+
+        // Actualizar inventario
+        for (const detalle of venta.ventas_detalles) {
+            const { error: inventarioError } = await supabase.rpc('actualizar_inventario', {
+                p_id_producto: detalle.id_producto,
+                p_id_sucursal: venta.id_sucursal,
+                p_cantidad: detalle.cantidad // Suma la cantidad de vuelta al inventario
+            });
+
+            if (inventarioError) throw new Error('Error al actualizar inventario');
+        }
+
+        // Actualizar estado de la venta
+        const { error: updateError } = await supabase
+            .from('Ventas')
+            .update({ 
+                estado: 'Cancelada',
+                descripcion: description 
+            })
+            .eq('id_venta', id_venta);
+
+        if (updateError) throw new Error('Error al actualizar estado de la venta');
+
+        res.status(200).json({
+            success: true,
+            message: 'Venta cancelada exitosamente'
+        });
+
+    } catch (error) {
+        console.error('Error al cancelar venta:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+
+
 module.exports = {
     obtenerVentas,
     obtenerDetalleVenta,
-    generarFactura
+    generarFactura,
+    cancelarVenta
 };

@@ -1,5 +1,6 @@
 const { insertarRelacion, existeRelacion } = require('../db/empresaProveedorSvc.js');
 const { getEmpresaId } = require('../db/empresaSvc.js');
+const { descProveedorDisponible } = require('../db/productoSvs.js');
 
 const getProveedores = async (req, res) => {
     const supabase = req.supabase;
@@ -29,15 +30,6 @@ const getProveedoresbyUsuario = async (req, res) => {
     const { data: proveedores, error } = await supabase.rpc('obtener_proveedores_empresa', {id_empresa_param});
 
     let proveedoresActivos = []
-
-    // for (const proveedor of proveedores){
-    //    const esActivo = await filtroProveedoresActivos(proveedor.id, id_empresa_param, supabase);
-
-    //    if (esActivo && proveedor.estado == true){
-        
-    //     proveedoresActivos.push(proveedor);
-    //    }
-    // }
 
     const promesas = proveedores.map(async (p) => {
         const esActivo = await filtroProveedoresActivos(p.id, id_empresa_param, supabase);
@@ -87,8 +79,6 @@ const filtroProveedoresActivos = async (id_proveedor, id_empresa, supabase) => {
         .select('*')
         .eq('id_proveedor', id_proveedor)
         .eq('id_empresa', id_empresa);
-
-
 
         if (error){
             throw error;
@@ -200,8 +190,6 @@ const deleteProveedor = async (id_proveedor, supabase) => {
     
 }
 
-
-
 const desactivarProveedor = async (req, res) => {
     const supabase = req.supabase;
     const { estado, id_usuario } = req.body;
@@ -217,6 +205,13 @@ const desactivarProveedor = async (req, res) => {
 
         if (relacionExistente == false) {
             throw new Error('Error de seguridad: relación no existente');
+       }
+
+       const sePuedeEliminar = await descProveedorDisponible(id_proveedor,  supabase);
+       if(!sePuedeEliminar){
+        return res.status(409).json({
+            message: 'Hay productos asignados a este proveedor'
+        });
        }
         const { data, error } = await supabase.from('empresas_proveedores').update(
             {

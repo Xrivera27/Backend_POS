@@ -28,7 +28,7 @@ const getCategoriaProductoOfEmpresa = async (req, res) => {
     try {
         const { data, error } = await supabase
         .from('categoria_producto')
-        .select('*')
+        .select('id_categoria, nombre_categoria, descripcion')
         .eq('id_empresa', id_empresa)
         .eq('estado', true);
 

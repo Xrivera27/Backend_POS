@@ -16,24 +16,25 @@ const obtenerVentas = async (req, res) => {
 
         // Obtener todas las ventas de una vez
         const { data: ventas, error: errorVentas } = await supabase
-            .from('Ventas')
-            .select(`
-                id_venta,
-                created_at,
-                sub_total,
-                estado,
-                id_usuario,
-                Usuarios (
-                    nombre,
-                    apellido
-                ),
-                Clientes (
-                    nombre_completo
-                )
-            `)
-            .eq('id_sucursal', id_sucursal)
-            .eq('estado', 'Pagada')
-            .order('created_at', { ascending: false })
+        .from('Ventas')
+        .select(`
+            id_venta,
+            created_at,
+            sub_total,
+            estado,
+            id_usuario,
+            descripcion,
+            Usuarios (
+                nombre,
+                apellido
+            ),
+            Clientes (
+                nombre_completo
+            )
+        `)
+        .eq('id_sucursal', id_sucursal)
+        // Removemos el .eq('estado', 'Pagada')
+        .order('created_at', { ascending: false })
 
         if (errorVentas) throw new Error('Error al obtener las ventas');
 
@@ -68,7 +69,7 @@ const obtenerVentas = async (req, res) => {
         const ventasFormateadas = ventas.map(venta => {
             const facturaData = facturasMap[venta.id_venta];
             const sarInfo = facturaData ? sarMap[facturaData.id_factura] : null;
-
+        
             return {
                 codigo: sarInfo?.numero_factura_SAR || 'N/A',
                 nombre: venta.Usuarios ? `${venta.Usuarios.nombre} ${venta.Usuarios.apellido}` : 'N/A',
@@ -82,7 +83,9 @@ const obtenerVentas = async (req, res) => {
                 cai: sarInfo?.numero_CAI || 'N/A',
                 id_venta: venta.id_venta,
                 id_factura: facturaData?.id_factura,
-                id_usuario: venta.id_usuario 
+                id_usuario: venta.id_usuario,
+                estado: venta.estado || 'Pagada',
+                descripcion: venta.descripcion // Añadimos la descripción
             };
         }).filter(v => v !== null);
 
@@ -508,15 +511,18 @@ const generarFactura = async (req, res) => {
 const cancelarVenta = async (req, res) => {
     const { supabase } = req;
     const { id_venta } = req.params;
-    const { description } = req.body;
+    const { descripcion } = req.body;  // Changed from description to descripcion
 
     try {
         const id_usuario = req.user?.id || req.user?.id_usuario;
+        console.log('ID Usuario:', id_usuario);
+        
         if (!id_usuario) {
             throw new Error('Usuario no autenticado');
         }
 
-        // Iniciar transacción
+        // Obtener la venta y sus detalles
+        console.log('Obteniendo venta:', id_venta);
         const { data: venta, error: ventaError } = await supabase
             .from('Ventas')
             .select(`
@@ -531,45 +537,90 @@ const cancelarVenta = async (req, res) => {
             .eq('id_venta', id_venta)
             .single();
 
-        if (ventaError) throw new Error('Venta no encontrada');
-        if (venta.estado === 'Cancelada') throw new Error('La venta ya está cancelada');
+        if (ventaError) {
+            console.error('Error al obtener venta:', ventaError);
+            throw new Error('Venta no encontrada');
+        }
 
-        // Actualizar inventario
+        console.log('Venta encontrada:', venta);
+        console.log('Detalles de venta:', venta.ventas_detalles);
+
+        if (venta.estado === 'Cancelada') {
+            throw new Error('La venta ya está cancelada');
+        }
+
+        const { aumentarInventario } = require('../db/inventarioSvc');
+
+        // Actualizar inventario para cada producto
+        console.log('Iniciando actualización de inventario...');
         for (const detalle of venta.ventas_detalles) {
-            const { error: inventarioError } = await supabase.rpc('actualizar_inventario', {
-                p_id_producto: detalle.id_producto,
-                p_id_sucursal: venta.id_sucursal,
-                p_cantidad: detalle.cantidad // Suma la cantidad de vuelta al inventario
-            });
+            console.log('Procesando detalle:', detalle);
+            
+            // Primero obtenemos el inventario
+            const { data: inventario, error: invError } = await supabase
+                .from('inventarios')
+                .select('id_inventario, stock_actual')
+                .eq('id_sucursal', venta.id_sucursal)
+                .eq('id_producto', detalle.id_producto)
+                .single();
 
-            if (inventarioError) throw new Error('Error al actualizar inventario');
+            if (invError) {
+                console.error('Error al obtener inventario:', invError);
+                throw new Error('Error al obtener inventario');
+            }
+
+            console.log('Inventario encontrado:', inventario);
+
+            // Usar la función aumentarInventario
+            try {
+                await aumentarInventario(inventario, detalle.cantidad, supabase);
+                console.log(`Inventario actualizado para producto ${detalle.id_producto}`);
+            } catch (error) {
+                console.error('Error al aumentar inventario:', error);
+                throw new Error('Error al actualizar inventario');
+            }
         }
 
         // Actualizar estado de la venta
+        console.log('Actualizando estado de la venta...');
+        console.log('Descripción a guardar:', descripcion);  // Changed from description to descripcion
         const { error: updateError } = await supabase
             .from('Ventas')
             .update({ 
                 estado: 'Cancelada',
-                descripcion: description 
+                descripcion: descripcion  // Using the correct variable name
             })
             .eq('id_venta', id_venta);
 
-        if (updateError) throw new Error('Error al actualizar estado de la venta');
+        if (updateError) {
+            console.error('Error al actualizar estado:', updateError);
+            throw new Error('Error al actualizar estado de la venta');
+        }
 
+        // Verificar que se guardó correctamente
+        const { data: ventaActualizada, error: checkError } = await supabase
+            .from('Ventas')
+            .select('estado, descripcion')
+            .eq('id_venta', id_venta)
+            .single();
+
+        console.log('Venta actualizada:', ventaActualizada);
+
+        console.log('Venta cancelada exitosamente');
         res.status(200).json({
             success: true,
             message: 'Venta cancelada exitosamente'
         });
 
     } catch (error) {
-        console.error('Error al cancelar venta:', error);
+        console.error('Error completo al cancelar venta:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message,
+            details: error.details || 'No hay detalles adicionales'
         });
     }
 };
-
 
 
 module.exports = {

@@ -28,4 +28,27 @@ const getEmpresaIdbyProduct = async (id_producto, supabase) => {
     }
 }
 
-module.exports = { getEmpresaIdbyProduct }
+const descProveedorDisponible = async(id_proveedor, supabase) => {
+    try{
+
+        const { data: productos, error } = await supabase.from('producto')
+        .select('id_producto')
+        .eq('id_proveedor', id_proveedor);
+
+        if(error){
+            throw error;
+        }
+
+        if(productos.length === 0 ){
+            return true;
+        }
+
+        return false;
+
+    } catch(error){
+        console.error('Ocurrio un error: ', error);
+        return false;
+    }
+}
+
+module.exports = { getEmpresaIdbyProduct, descProveedorDisponible }

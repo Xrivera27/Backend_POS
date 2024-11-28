@@ -20,6 +20,10 @@ const configureempresaRoutes = require('./updateempresaRoutes');
 const AdminVentas = require('./AdminVentasRoutes');
 
 
+// Reporte
+const Reportes = require('./ReporteRoutes');
+
+
 //empresas rutas
 const categoriaRoutes = require('./categoriaRoutes');
 const configempresaRoutes = require('./configempresaRoutes');
@@ -83,6 +87,9 @@ router.use('/clientes', clientesRoutes);
 router.use('/proveedores', proveedorRouter);
 router.use('/usuarios', usuarioRoutes);
 router.use('/usuario', usuarioRouter);
+
+//Reporte
+router.use('/reporte', Reportes);
 
 
 //sucursales y productos

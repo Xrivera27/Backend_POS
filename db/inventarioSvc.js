@@ -48,13 +48,17 @@ const postFirstinventario = async (id_producto, id_sucursal, supabase) => {
 const buscarProductoInventario = async (id_producto, id_sucursal, supabase) => {
     try {
         const { data: inventario, error } = await supabase.from('inventarios')
-        .select('id_inventario')
+        .select('id_inventario, stock_actual')
         .eq('id_producto', id_producto)
         .eq('id_sucursal', id_sucursal)
         .single();
 
         if (inventario){
             return inventario;
+        }
+
+        if(error){
+            throw error;
         }
 
         else return false;

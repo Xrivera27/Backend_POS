@@ -13,8 +13,6 @@ const register = async (req, res) => {
 
   const supabase = req.supabase;
 
-
-
   try {
     // Insertar en la tabla "Empresas"
     const {
@@ -82,6 +80,9 @@ const register = async (req, res) => {
 
     // Enviar el correo
     await transporter.sendMail(mailOptions);
+    res.status(200).json({
+      message: 'Se envio solictud de registro de empresa.'
+    })
 
 
   } catch (error) {

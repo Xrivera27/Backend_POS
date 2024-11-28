@@ -1,5 +1,5 @@
 const cron = require("node-cron");
-const { supabase } = require('../ruta/supabaseClient.js');
+const { supabase } = require('../../ruta/supabaseClient.js');
 
 const empresas = async () => {
     try {

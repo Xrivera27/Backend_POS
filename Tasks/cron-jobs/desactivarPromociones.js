@@ -1,5 +1,5 @@
 const cron = require("node-cron");
-const { supabase } = require('../ruta/supabaseClient.js');
+const { supabase } = require('../../ruta/supabaseClient.js');
 
 const getPromosActivas = async () => {
     const fechaActual = new Date();
@@ -32,17 +32,20 @@ const getPromosActivas = async () => {
     }
 }
 
-cron.schedule('10 1 * * *', async() => {
+async function desactivarPromocionesFunction() {
     try {
-    const { resultado, promocionesDsc } = await getPromosActivas();
-    if(resultado) {
-        console.log(`Las siguientes promociones fueron desactivadas por que su fecha expiro:`);
-        console.log(promocionesDsc);
-    }
-    } catch (error) {
-        console.error('Ocurrio un error: ', error);
-    }
-    
+        const { resultado, promocionesDsc } = await getPromosActivas();
+        if(resultado) {
+            console.log(`Las siguientes promociones fueron desactivadas por que su fecha expiro:`);
+            console.log(promocionesDsc);
+        }
+        } catch (error) {
+            console.error('Ocurrio un error: ', error);
+        }
+}
+
+cron.schedule('10 1 * * *', async() => {
+    await desactivarPromocionesFunction();
 });
 
-module.exports = cron;
+module.exports = {cron, desactivarPromocionesFunction};

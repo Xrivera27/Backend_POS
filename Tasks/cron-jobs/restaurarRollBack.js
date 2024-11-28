@@ -1,7 +1,7 @@
 const cron = require("node-cron");
 
-const { supabase } = require('../ruta/supabaseClient.js');
-const { eliminarInventarioRollBackEsp } = require('../db/inventarioSvc.js');
+const { supabase } = require('../../ruta/supabaseClient.js');
+const { eliminarInventarioRollBackEsp } = require('../../db/inventarioSvc.js');
 
 const obtenerHoraVencida = () => {
         const ahora = new Date();
@@ -19,6 +19,9 @@ const getRollBacksVencidos = async () => {
         if(error){
             throw error;
         }
+        if(rollBacks.length === 0 || !rollBacks){
+            return false;
+        }
 
         return rollBacks;
 
@@ -31,6 +34,10 @@ const getRollBacksVencidos = async () => {
 const restaurarInventario = async () => {
     try {
         const inventariosRB = await getRollBacksVencidos();
+        if(!inventariosRB){
+            return;
+        }
+        
     
            const restauraciones = inventariosRB.map(inventario => {
             const inventarioObject = {

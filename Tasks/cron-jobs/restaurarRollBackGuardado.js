@@ -1,7 +1,7 @@
 const cron = require("node-cron");
 
-const { supabase } = require('../ruta/supabaseClient.js');
-const { eliminarInventarioRollBackEsp, setNullRollBack } = require('../db/inventarioSvc.js');
+const { supabase } = require('../../ruta/supabaseClient.js');
+const { eliminarInventarioRollBackEsp, setNullRollBack } = require('../../db/inventarioSvc.js');
 
 const obtenerHoraVencida = () => {
         const ahora = new Date();

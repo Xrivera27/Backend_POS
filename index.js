@@ -6,7 +6,8 @@ const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
 const { sessionActiva } = require('./middlewares/sessionMiddleware.js');
 const routes = require('./routes'); // Importar el index de rutas
-require('./Tasks/startTasks.js'); //Importamos e iniciamos los cron jobs
+const {tareasArranque} = require('./Tasks/tareas-arranque/startTareasArranque.js');
+require('./Tasks/cron-jobs/startTasks.js'); //Importamos e iniciamos los cron jobs
 
 // Inicializar Express
 const app = express();
@@ -25,6 +26,7 @@ app.use((req, res, next) => {
 
 // Rutas
 app.use('/api', routes); // Usar el index de rutas
+tareasArranque();
 
 // Iniciar el servidor
 const PORT = process.env.PORT || 3000;

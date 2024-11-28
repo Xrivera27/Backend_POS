@@ -1,7 +1,7 @@
 const cron = require("node-cron");
-const { supabase } = require('../ruta/supabaseClient.js');
-const { tienePromoProducto, tienePromoCategoriabyCategoria } = require('../db/promocionesSvs.js');
-const { eliminarPromoAlert, eliminarPromoAlertCategory } = require('../db/alerts.js');
+const { supabase } = require('../../ruta/supabaseClient.js');
+const { tienePromoProducto, tienePromoCategoriabyCategoria } = require('../../db/promocionesSvs.js');
+const { eliminarPromoAlert, eliminarPromoAlertCategory } = require('../../db/alerts.js');
 
 const activarPromosProducto = async () => {
     const fechaActual = new Date();
@@ -147,7 +147,7 @@ const activarPromosCategoria = async () => {
     }
 }
 
-cron.schedule('50 1 * * *', async () => {
+async function activarPromociones() {
     try {
         const getPromos = [
             activarPromosProducto(),
@@ -180,6 +180,10 @@ cron.schedule('50 1 * * *', async () => {
         console.error('Ocurrio un error', error);
     }
     
+}
+
+cron.schedule('50 1 * * *', async () => {
+    await activarPromociones();
 });
 
-module.exports = cron;
+module.exports = {cron, activarPromociones};

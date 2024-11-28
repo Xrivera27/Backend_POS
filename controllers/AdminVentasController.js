@@ -1,5 +1,6 @@
-const { getSucursalesbyUser, getDatosSarSucursal } = require('../db/sucursalUsuarioSvc');
-
+const { getSucursalesbyUser} = require('../db/sucursalUsuarioSvc');
+const PDFDocument = require('pdfkit');
+const { format } = require('date-fns');
 const obtenerVentas = async (req, res) => {
     const { supabase } = req;
 
@@ -32,7 +33,7 @@ const obtenerVentas = async (req, res) => {
             `)
             .eq('id_sucursal', id_sucursal)
             .eq('estado', 'Pagada')
-            .order('id_venta', { ascending: true });
+            .order('created_at', { ascending: false })
 
         if (errorVentas) throw new Error('Error al obtener las ventas');
 
@@ -80,7 +81,8 @@ const obtenerVentas = async (req, res) => {
                 numero_factura: sarInfo?.numero_factura_SAR || 'N/A',
                 cai: sarInfo?.numero_CAI || 'N/A',
                 id_venta: venta.id_venta,
-                id_factura: facturaData?.id_factura
+                id_factura: facturaData?.id_factura,
+                id_usuario: venta.id_usuario 
             };
         }).filter(v => v !== null);
 
@@ -219,7 +221,291 @@ const obtenerDetalleVenta = async (req, res) => {
     }
 };
 
+
+const generarFactura = async (req, res) => {
+    const supabase = req.supabase;
+    const id_venta = req.params.id_venta;
+    const id_usuario = req.params.id_usuario;
+  
+    try {
+        if (!id_venta || !id_usuario) {
+            throw new Error('Parámetros incompletos');
+        }
+
+        const { data: venta, error: ventaError } = await supabase
+            .from('Ventas')
+            .select(`
+                *,
+                Clientes (
+                    nombre_completo,
+                    rtn,
+                    direccion
+                ),
+                facturas!inner (
+                    *,
+                    factura_SAR!inner (
+                        numero_factura_SAR,
+                        numero_CAI
+                    )
+                )
+            `)
+            .eq('id_venta', id_venta)
+            .single();
+
+        if (ventaError || !venta) {
+            console.error('Error al obtener venta:', ventaError);
+            throw new Error('Error al obtener datos de venta');
+        }
+        console.log('Datos de venta:', venta);
+        console.log('Datos completos de factura_SAR:', {
+            numero_factura: venta.facturas[0].factura_SAR[0].numero_factura_SAR,
+            cai: venta.facturas[0].factura_SAR[0].numero_CAI,
+            datos_completos: venta.facturas[0].factura_SAR
+        });
+
+        const id_sucursal = venta.id_sucursal;
+        if (!id_sucursal) {
+            throw new Error('Sucursal no encontrada en la venta');
+        }
+
+        const { data: sucursal, error: sucursalError } = await supabase
+            .from('Sucursales')
+            .select('nombre_administrativo, direccion, telefono, correo, id_empresa')
+            .eq('id_sucursal', id_sucursal)
+            .single();
+        
+        if (sucursalError) {
+            console.error('Error al obtener sucursal:', sucursalError);
+            throw new Error('Error al obtener datos de sucursal');
+        }
+        console.log('Datos de sucursal:', sucursal);
+
+        const { data: empresa, error: empresaError } = await supabase
+            .from('Empresas')
+            .select('nombre, telefono_principal, correo_principal')
+            .eq('id_empresa', sucursal.id_empresa)
+            .single();
+        
+        if (empresaError) {
+            console.error('Error al obtener empresa:', empresaError);
+            throw new Error('Error al obtener datos de empresa');
+        }
+        console.log('Datos de empresa:', empresa);
+
+        const { data: detalles, error: detallesError } = await supabase
+            .from('ventas_detalles')
+            .select(`
+                cantidad,
+                descuento,
+                total_detalle,
+                producto (
+                    nombre,
+                    codigo_producto,
+                    precio_unitario
+                )
+            `)
+            .eq('id_venta', id_venta);
+
+        if (detallesError) {
+            console.error('Error al obtener detalles:', detallesError);
+            throw new Error('Error al obtener detalles de venta');
+        }
+        console.log('Detalles de venta:', detalles);
+
+        const { data: datosSAR, error: sarError } = await supabase
+            .from('Datos_SAR')
+            .select(`
+                rango_inicial,
+                rango_final,
+                fecha_vencimiento
+            `)
+            .eq('id_sucursal', id_sucursal)
+            .eq('activo', true)
+            .single();
+
+        if (sarError) {
+            console.error('Error al obtener datos SAR:', sarError);
+            throw new Error('Error al obtener datos SAR');
+        }
+
+        const numeroALetras = (numero) => {
+            const unidades = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
+            const decenas = ['', 'DIEZ', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
+            const especiales = {
+                11: 'ONCE', 12: 'DOCE', 13: 'TRECE', 14: 'CATORCE', 15: 'QUINCE',
+                16: 'DIECISEIS', 17: 'DIECISIETE', 18: 'DIECIOCHO', 19: 'DIECINUEVE',
+                21: 'VEINTIUNO', 22: 'VEINTIDOS', 23: 'VEINTITRES', 24: 'VEINTICUATRO', 25: 'VEINTICINCO',
+                26: 'VEINTISEIS', 27: 'VEINTISIETE', 28: 'VEINTIOCHO', 29: 'VEINTINUEVE'
+            };
+            const centenas = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
+
+            const convertirMiles = (n) => {
+                if (n === 0) return '';
+                if (n === 1) return 'MIL ';
+                return unidades[n] + ' MIL ';
+            };
+
+            const convertirCentenas = (n) => {
+                if (n === 0) return '';
+                if (n === 100) return 'CIEN ';
+                return centenas[Math.floor(n / 100)] + ' ';
+            };
+
+            const convertirDecenas = (n) => {
+                if (n === 0) return '';
+                const decena = Math.floor(n / 10);
+                const unidad = n % 10;
+                
+                if (n < 10) return unidades[n] + ' ';
+                if (especiales[n]) return especiales[n] + ' ';
+                if (unidad === 0) return decenas[decena] + ' ';
+                if (decena === 2) return 'VEINTI' + unidades[unidad].toLowerCase() + ' ';
+                return decenas[decena] + ' Y ' + unidades[unidad] + ' ';
+            };
+
+            const partes = Number(numero).toFixed(2).split('.');
+            const entero = parseInt(partes[0]);
+            const decimal = parseInt(partes[1]);
+
+            if (entero === 0) return 'CERO LEMPIRAS CON ' + decimal + '/100';
+
+            let resultado = '';
+            
+            const miles = Math.floor(entero / 1000);
+            if (miles > 0) resultado += convertirMiles(miles);
+
+            const centena = entero % 1000;
+            if (centena > 0) {
+                resultado += convertirCentenas(centena);
+                const decena = centena % 100;
+                resultado += convertirDecenas(decena);
+            }
+
+            resultado += 'LEMPIRAS CON ' + decimal + '/100';
+            return resultado.trim();
+        };
+
+        console.log('Creando documento PDF...');
+        const doc = new PDFDocument({
+            size: [227, 800],
+            margin: 10,
+            bufferPages: true
+        });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename=factura_${id_venta}.pdf`);
+        doc.pipe(res);
+
+        const printLineItem = (text, value) => {
+            const xText = 10;
+            const xValue = 170;
+            const y = doc.y;
+            
+            doc.text(text, xText, y, { align: 'left' });
+            doc.text(value.toFixed(2), xValue, y, { align: 'right' });
+            doc.moveDown(0.5);
+        };
+
+        // Encabezado
+        doc.font('Helvetica-Bold')
+            .fontSize(16)
+            .text(empresa.nombre, { align: 'center' })
+            .fontSize(12)
+            .text('Casa Matriz', { align: 'center' })
+            .text(sucursal.direccion, { align: 'center' })
+            .text(`Tel: ${empresa.telefono_principal}`, { align: 'center' })
+            .text(`Email: ${empresa.correo_principal}`, { align: 'center' })
+            .moveDown(0.5);
+
+        // Información de factura
+        doc.font('Helvetica')
+            .fontSize(8)
+            .text(`Sucursal: ${sucursal.nombre_administrativo}`)
+            .text(`Factura: ${venta.facturas[0].factura_SAR[0].numero_factura_SAR}`)
+            .text(`Fecha Emisión: ${format(new Date(venta.created_at), 'dd-MM-yyyy HH:mm:ss')}`)
+            .text(`Tipo de Pago: ${venta.facturas[0].tipo_factura}`)
+            .text(`Cliente: ${venta.Clientes?.nombre_completo || 'Consumidor Final'}`)
+            .text(`R.T.N: ${venta.Clientes?.rtn || '00000000000000'}`)
+            .moveDown(0.5);
+
+        // Encabezados de la tabla
+        const startY = doc.y;
+        doc.text('Cant.', 10, startY)
+            .text('Nombre', 40, startY)
+            .text('Precio', 170, startY, { align: 'right' });
+
+        // Línea separadora
+        doc.moveTo(10, doc.y + 5).lineTo(217, doc.y + 5).stroke();
+        doc.moveDown();
+
+        // Productos
+        detalles.forEach(item => {
+            const y = doc.y;
+            doc.text(item.cantidad.toString(), 10, y)
+                .text(item.producto.nombre, 40, y)
+                .text(item.producto.precio_unitario.toFixed(2), 170, y, { align: 'right' });
+            doc.moveDown();
+        });
+
+        // Línea separadora
+        doc.moveTo(10, doc.y + 5).lineTo(217, doc.y + 5).stroke();
+        doc.moveDown();
+
+        // Sección de totales
+        doc.text('OBSERVACIONES:', 10)
+            .moveDown(0.5);
+
+        printLineItem('IMPORTE EXONERADO:', venta.facturas[0].total_extento);
+        printLineItem('IMPORTE GRAVADO 15%:', venta.facturas[0].gravado_15);
+        printLineItem('IMPORTE GRAVADO 18%:', venta.facturas[0].gravado_18);
+        printLineItem('DESCUENTOS Y REBAJAS OTORGADOS:', venta.facturas[0].descuento);
+        printLineItem('ISV 15%:', venta.facturas[0].ISV_15);
+        printLineItem('ISV 18%:', venta.facturas[0].ISV_18);
+
+        // Total y datos de pago
+        doc.font('Helvetica-Bold')
+            .text('Total:', 10)
+            .text(venta.facturas[0].total.toFixed(2), 170, doc.y - 12, { align: 'right' })
+            .font('Helvetica')
+            .moveDown();
+
+        printLineItem('Efectivo:', venta.facturas[0].pago);
+        printLineItem('Cambio:', venta.facturas[0].cambio);
+
+        // Resto del documento
+        doc.text(' ', 10)
+            .moveDown(0.5)
+            .text(numeroALetras(venta.facturas[0].total), { align: 'center' })
+            .moveDown()
+            .moveDown()
+            .text('No. de Orden de Compra Exenta:', { align: 'center' })
+            .text('No. Constancia de Registro de Exonerados:', { align: 'center' })
+            .text('No. Registro de SAG:', { align: 'center' })
+            .moveDown()
+            .text(`CAI: ${venta.facturas[0].factura_SAR[0].numero_CAI}`, { align: 'center' })
+            .text(`Rango Facturación: ${datosSAR.rango_inicial} A ${datosSAR.rango_final}`, { align: 'center' })
+            .text(`Fecha Límite de Emisión: ${format(new Date(datosSAR.fecha_vencimiento), 'dd-MM-yyyy')}`, { align: 'center' })
+            .moveDown()
+            .font('Helvetica-Bold')
+            .text('LA FACTURA ES BENEFICIO DE TODOS,', { align: 'center' })
+            .text('EXIJALA', { align: 'center' });
+
+        console.log('Finalizando documento...');
+        doc.end();
+        console.log('Documento PDF generado exitosamente');
+
+    } catch (error) {
+        console.error('Error en la generación de la factura:', error);
+        res.status(500).json({
+            error: 'Error al generar la factura',
+            details: error.message,
+            stack: error.stack
+        });
+    }
+};
+
 module.exports = {
     obtenerVentas,
-    obtenerDetalleVenta
+    obtenerDetalleVenta,
+    generarFactura
 };

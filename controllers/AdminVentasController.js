@@ -229,6 +229,7 @@ const generarFactura = async (req, res) => {
     const supabase = req.supabase;
     const id_venta = req.params.id_venta;
     const id_usuario = req.params.id_usuario;
+    const esCopia = req.query.esCopia === 'true';
   
     try {
         if (!id_venta || !id_usuario) {
@@ -304,6 +305,7 @@ const generarFactura = async (req, res) => {
                 producto (
                     nombre,
                     codigo_producto,
+                    impuesto,
                     precio_unitario
                 )
             `)
@@ -405,15 +407,19 @@ const generarFactura = async (req, res) => {
             const y = doc.y;
             
             doc.text(text, xText, y, { align: 'left' });
-            doc.text(value.toFixed(2), xValue, y, { align: 'right' });
+            if (typeof value === 'number') {
+                doc.text(value.toFixed(2), xValue, y, { align: 'right' });
+            } else {
+                doc.text(value.toString(), xValue, y, { align: 'right' });
+            }
             doc.moveDown(0.5);
         };
 
         // Encabezado
         doc.font('Helvetica-Bold')
-            .fontSize(16)
+            .fontSize(14)
             .text(empresa.nombre, { align: 'center' })
-            .fontSize(12)
+            .fontSize(8)
             .text('Casa Matriz', { align: 'center' })
             .text(sucursal.direccion, { align: 'center' })
             .text(`Tel: ${empresa.telefono_principal}`, { align: 'center' })
@@ -426,42 +432,44 @@ const generarFactura = async (req, res) => {
             .text(`Sucursal: ${sucursal.nombre_administrativo}`)
             .text(`Factura: ${venta.facturas[0].factura_SAR[0].numero_factura_SAR}`)
             .text(`Fecha Emisión: ${format(new Date(venta.created_at), 'dd-MM-yyyy HH:mm:ss')}`)
-            .text(`Tipo de Pago: ${venta.facturas[0].tipo_factura}`)
             .text(`Cliente: ${venta.Clientes?.nombre_completo || 'Consumidor Final'}`)
             .text(`R.T.N: ${venta.Clientes?.rtn || '00000000000000'}`)
             .moveDown(0.5);
 
         // Encabezados de la tabla
         const startY = doc.y;
-        doc.text('Cant.', 10, startY)
-            .text('Nombre', 40, startY)
-            .text('Precio', 170, startY, { align: 'right' });
+        doc.font('Helvetica-Bold')
+            .text('Cant.', 10, startY, { width: 25 })
+            .text('Nombre', 35, startY, { width: 130 })
+            .text('Precio', 165, startY, { width: 40, align: 'right' })
+            .text('T', 205, startY, { width: 12, align: 'center' });
 
         // Línea separadora
-        doc.moveTo(10, doc.y + 5).lineTo(217, doc.y + 5).stroke();
-        doc.moveDown();
+        doc.moveTo(10, doc.y + 0).lineTo(217, doc.y + 0).stroke();
+        doc.moveDown(0.3);
 
         // Productos
+        doc.font('Helvetica');
         detalles.forEach(item => {
             const y = doc.y;
-            doc.text(item.cantidad.toString(), 10, y)
-                .text(item.producto.nombre, 40, y)
-                .text(item.producto.precio_unitario.toFixed(2), 170, y, { align: 'right' });
-            doc.moveDown();
+            const total = item.total_detalle;
+            const tipo = item.producto.impuesto > 0 ? 'G' : 'E';
+            
+            doc.text(item.cantidad.toString(), 10, y, { width: 25 })
+                .text(item.producto.nombre, 35, y, { width: 130 })
+                .text(total.toFixed(2), 165, y, { width: 40, align: 'right' })
+                .text(tipo, 205, y, { width: 12, align: 'center' });
+                doc.moveDown();
         });
 
         // Línea separadora
         doc.moveTo(10, doc.y + 5).lineTo(217, doc.y + 5).stroke();
         doc.moveDown();
 
-        // Sección de totales
-        doc.text('OBSERVACIONES:', 10)
-            .moveDown(0.5);
-
         printLineItem('IMPORTE EXONERADO:', venta.facturas[0].total_extento);
         printLineItem('IMPORTE GRAVADO 15%:', venta.facturas[0].gravado_15);
         printLineItem('IMPORTE GRAVADO 18%:', venta.facturas[0].gravado_18);
-        printLineItem('DESCUENTOS Y REBAJAS OTORGADOS:', venta.facturas[0].descuento);
+        printLineItem('Rebajas y Descuento:', venta.facturas[0].descuento);
         printLineItem('ISV 15%:', venta.facturas[0].ISV_15);
         printLineItem('ISV 18%:', venta.facturas[0].ISV_18);
 
@@ -472,6 +480,9 @@ const generarFactura = async (req, res) => {
             .font('Helvetica')
             .moveDown();
 
+        // Tipo de pago, efectivo y cambio
+        doc.font('Helvetica');
+        printLineItem('Tipo de Pago:', venta.facturas[0].tipo_factura);
         printLineItem('Efectivo:', venta.facturas[0].pago);
         printLineItem('Cambio:', venta.facturas[0].cambio);
 
@@ -489,8 +500,15 @@ const generarFactura = async (req, res) => {
             .text(`Rango Facturación: ${datosSAR.rango_inicial} A ${datosSAR.rango_final}`, { align: 'center' })
             .text(`Fecha Límite de Emisión: ${format(new Date(datosSAR.fecha_vencimiento), 'dd-MM-yyyy')}`, { align: 'center' })
             .moveDown()
-            .font('Helvetica-Bold')
-            .text('LA FACTURA ES BENEFICIO DE TODOS,', { align: 'center' })
+            .font('Helvetica-Bold');
+
+        // Agregar el texto "FACTURA--COPIA" si es una copia
+        if (esCopia) {
+            doc.text('FACTURA--COPIA', { align: 'center' })
+                .moveDown();
+        }
+
+        doc.text('LA FACTURA ES BENEFICIO DE TODOS,', { align: 'center' })
             .text('EXIJALA', { align: 'center' });
 
         console.log('Finalizando documento...');
@@ -506,7 +524,6 @@ const generarFactura = async (req, res) => {
         });
     }
 };
-
 
 const cancelarVenta = async (req, res) => {
     const { supabase } = req;

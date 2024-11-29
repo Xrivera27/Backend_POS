@@ -709,24 +709,28 @@ const recuperarVentaGuardada = async (req, res) => {
         }
 
         const { data: venta, error: ventaError } = await supabase
-            .from('Ventas')
-            .select(`
+        .from('Ventas')
+        .select(`
+            *,
+            Clientes (
+                nombre_completo,
+                rtn,
+                direccion
+            ),
+            facturas!inner (
                 *,
-                Clientes (
-                    nombre_completo,
-                    rtn,
-                    direccion
-                ),
-                facturas!inner (
-                    *,
-                    factura_SAR!inner (
-                        numero_factura_SAR,
-                        numero_CAI
-                    )
+                factura_SAR!inner (
+                    numero_factura_SAR,
+                    numero_CAI
                 )
-            `)
-            .eq('id_venta', id_venta)
-            .single();
+            ),
+            Usuarios!inner (
+                nombre,
+                apellido
+            )
+        `)
+        .eq('id_venta', id_venta)
+        .single();
 
         if (ventaError || !venta) {
             console.error('Error al obtener venta:', ventaError);
@@ -898,12 +902,14 @@ const recuperarVentaGuardada = async (req, res) => {
             .text(`Email: ${empresa.correo_principal}`, { align: 'center' })
             .moveDown(0.5);
 
-        // Información de factura
-        doc.font('Helvetica')
+
+            //Informacion Factura
+            doc.font('Helvetica')
             .fontSize(8)
             .text(`Sucursal: ${sucursal.nombre_administrativo}`)
             .text(`Factura: ${venta.facturas[0].factura_SAR[0].numero_factura_SAR}`)
             .text(`Fecha Emisión: ${format(new Date(venta.created_at), 'dd-MM-yyyy HH:mm:ss')}`)
+            .text(`Cajer@: ${venta.Usuarios.nombre} ${venta.Usuarios.apellido}`) // Agregamos el cajero
             .text(`Cliente: ${venta.Clientes?.nombre_completo || 'Consumidor Final'}`)
             .text(`R.T.N: ${venta.Clientes?.rtn || '00000000000000'}`)
             .moveDown(0.5);

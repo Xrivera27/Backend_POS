@@ -18,6 +18,7 @@ const configureempresaRoutes = require('./updateempresaRoutes');
 //Administrar Compras y Ventas
 
 const AdminVentas = require('./AdminVentasRoutes');
+const AdminCompras = require('./AdminComprasRoutes');
 
 
 // Reporte
@@ -107,6 +108,7 @@ router.use('/compras', comprasRouter);
 
 //Administrar Ventas y Compras
 router.use('/AdminVentas', AdminVentas);
+router.use('/AdminCompras', AdminCompras);
 
 
 

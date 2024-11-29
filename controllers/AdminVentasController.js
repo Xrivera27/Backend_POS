@@ -236,6 +236,7 @@ const generarFactura = async (req, res) => {
             throw new Error('Parámetros incompletos');
         }
 
+        // Modificamos la consulta para incluir los datos del usuario
         const { data: venta, error: ventaError } = await supabase
             .from('Ventas')
             .select(`
@@ -251,6 +252,10 @@ const generarFactura = async (req, res) => {
                         numero_factura_SAR,
                         numero_CAI
                     )
+                ),
+                Usuarios!inner (
+                    nombre,
+                    apellido
                 )
             `)
             .eq('id_venta', id_venta)
@@ -427,11 +432,12 @@ const generarFactura = async (req, res) => {
             .moveDown(0.5);
 
         // Información de factura
-        doc.font('Helvetica')
+              doc.font('Helvetica')
             .fontSize(8)
             .text(`Sucursal: ${sucursal.nombre_administrativo}`)
             .text(`Factura: ${venta.facturas[0].factura_SAR[0].numero_factura_SAR}`)
             .text(`Fecha Emisión: ${format(new Date(venta.created_at), 'dd-MM-yyyy HH:mm:ss')}`)
+            .text(`Cajer@: ${venta.Usuarios.nombre} ${venta.Usuarios.apellido}`) // Agregamos el cajero
             .text(`Cliente: ${venta.Clientes?.nombre_completo || 'Consumidor Final'}`)
             .text(`R.T.N: ${venta.Clientes?.rtn || '00000000000000'}`)
             .moveDown(0.5);

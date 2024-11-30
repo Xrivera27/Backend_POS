@@ -1,5 +1,5 @@
 const { response } = require('express');
-const { insertarRelacion, getSucursalesbyUser } = require('../db/sucursalUsuarioSvc.js');
+const { existeRelacion, getIdUsersBySucursal, insertarRelacion, getSucursalesbyUser } = require('../db/sucursalUsuarioSvc.js');
 const { getEmpresaId } = require('../db/empresaSvc.js');
 const { getRolByUsuario } = require('../db/validaciones.js');
 
@@ -82,6 +82,54 @@ const getUsuarioOfEmpresa = async (req, res) => {
   } catch (error) {
 
     res.status(500).json(error);
+  }
+}
+
+const getUsuarioOfSucursal = async (req, res) => {
+  try {
+    const supabase = req.supabase;
+    const id_sucursal = req.params.id_sucursal;
+    const id_usuario = req.params.id_usuario;
+
+    const promesas = [
+      existeRelacion(id_usuario, id_sucursal, supabase),
+      getIdUsersBySucursal(id_sucursal, supabase)
+    ];
+
+    const promesasResultados = await Promise.all(promesas);
+
+    const { resultado: resultRelacion } = promesasResultados[0];
+    const { resultado: resultIds, ids } = promesasResultados[1];
+
+    if(!resultRelacion){
+      throw 'Este usuario no pertenece a la sucursal especificada';
+    }
+
+    if(!resultIds){
+      throw 'Error al seleccionar usuarios de la sucursal';
+    }
+
+    const { data: usuarios, error } = await supabase.from('Usuarios')
+    .select('id_usuario, id_rol, nombre, apellido, nombre_usuario, correo, telefono, direccion, estado')
+    .in('id_usuario', ids.map(i => i.id_usuario));
+
+    if(usuarios.length > 0){
+      usuarios.forEach(element => {
+      element.sucursales = id_sucursal;
+      });
+    }
+
+    if(error){
+      throw error;
+    }
+
+    res.status(200).json(usuarios);
+
+    //const { data: usuarios, error } = await supabase.from('Usuarios')
+    
+  } catch (error) {
+    console.error('Ocurrio un error: ', error);
+    res.status(500).json({error: 'Fallo interno del servidor'});
   }
 }
 
@@ -203,5 +251,5 @@ const desactivarUsuario = async (req, res) => {
 }
 
 module.exports = {
-  getUsuario, getRolUsuario, getUsuarioOfEmpresa, postUsuario, patchUsuario, desactivarUsuario
+  getUsuario, getRolUsuario, getUsuarioOfSucursal, getUsuarioOfEmpresa, postUsuario, patchUsuario, desactivarUsuario
 };

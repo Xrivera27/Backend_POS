@@ -34,7 +34,7 @@ const getRollBacksVencidos = async () => {
 const restaurarInventario = async () => {
     try {
         const inventariosRB = await getRollBacksVencidos();
-        if(!inventariosRB){
+        if(!inventariosRB || inventariosRB.length === 0 ){
             return;
         }
         

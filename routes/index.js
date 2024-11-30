@@ -95,7 +95,7 @@ router.use('/reporte', Reportes);
 
 //sucursales y productos
 router.use('/categoria-producto', categoriProductoRouter);
-router.use('/sucursales', sucursaleRoutes);
+//router.use('/sucursales', sucursaleRoutes);
 router.use('/sucursales', sucursalRouter);
 router.use('/productos', productosRoutes);
 router.use('/inventario', inventarioRouter);

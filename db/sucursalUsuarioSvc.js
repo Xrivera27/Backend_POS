@@ -26,6 +26,54 @@ const getSucursalesbyUser = async (id_usuario, supabase) => {
     }
 }
 
+const getIdUsersBySucursal = async (id_sucursal, supabase) => {
+    try {
+        const { data: ids, error } = await supabase.from('sucursales_usuarios')
+        .select('id_usuario')
+        .eq('id_sucursal', id_sucursal);
+
+        if (error){
+            throw error;
+        }
+
+        return {
+            resultado: true,
+            ids: ids
+        }
+
+    } catch (error) {
+        console.error('Ha ocurrido un error: ', error);
+        return {
+            resultado: false,
+            ids: []
+        }
+    }
+}
+
+const existeRelacion = async (id_usuario, id_sucursal, supabase) => {
+try {
+    const { data, error } = await supabase.from('sucursales_usuarios')
+    .select('id')
+    .eq('id_usuario', id_usuario)
+    .eq('id_sucursal', id_sucursal);
+
+    if(error){
+        throw error;
+    }
+
+    return {
+        resultado: true,
+        id_relacion: data
+    }
+
+} catch (error) {
+    return {
+        resultado: false,
+        id_relacion: null
+    }
+}
+}
+
 const getDatosSarSucursal = async (id_usuario, supabase) => {
 
     try {
@@ -105,4 +153,4 @@ const deleteRelacion = async (id, supabase) => {
     }
 }
 
-module.exports = { insertarRelacion, getSucursalesbyUser, getDatosSarSucursal }
+module.exports = { existeRelacion, insertarRelacion, getSucursalesbyUser, getIdUsersBySucursal, getDatosSarSucursal }

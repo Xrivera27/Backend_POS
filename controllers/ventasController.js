@@ -439,16 +439,37 @@ const recuperarVentaGuardada = async (req, res) => {
          asignar.id_usuario = id_usuario;
          asignar.estado = 'Pendiente de pago';
          if(id_cliente !== 0 || id_cliente !== null){asignar.id_cliente = id_cliente}
+
+         const promesas = [
+            supabase.from('Ventas')
+        .insert([asignar]).select('id_venta'),
+        supabase.rpc('actualizar_num_factura', {id_sucursal_param: id_sucursal})
+        .select('*')
+         ];
+
+         const resultados = await Promise.all(promesas);
+
          
-        const { data: venta, error } = await supabase.from('Ventas')
-        .insert([asignar]).select('id_venta');
-   
+        const { data: venta, error } = resultados[0];
+
+        const { data: num_factura, error: errorNumFactura } = resultados[1];
+
+        if(errorNumFactura){
+            console.error('Error al obtener los datos de la tabla:', errorNumFactura.message);
+            throw new Error('Ocurrió un error al aumentar numero de factura en sucursal.');
+         }
+
         if(error){
            console.error('Error al obtener los datos de la tabla:', error.message);
            throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
         }
 
-      const {exitos, factura} = await calculos.calcularDetallesVenta(venta[0].id_venta, productos, id_usuario, supabase);
+        const datosCodigoFactura = {
+            id_sucursal: id_sucursal,
+            num_factura: num_factura
+        };
+
+      const {exitos, factura} = await calculos.calcularDetallesVenta(venta[0].id_venta, datosCodigoFactura, productos, id_usuario, supabase);
 
        if (exitos != productos.length){
         throw 'Algunos productos no fueron agregados';

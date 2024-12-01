@@ -674,18 +674,21 @@ const recuperarVentaGuardada = async (req, res) => {
         const { data: cajaCerrada, error } = await supabase
         .from('caja')
 
-        .update({
-            abierto: false
-        })
-        .select('id_caja, valor_inicial, valor_actual')
+        // .update({
+        //     abierto: false
+        // })
+        .select('id_caja, created_at, valor_inicial, valor_actual')
         .eq('id_caja', caja.id_caja);
+
+        const reporteCaja = await calculos.reporteCaja(cajaCerrada[0], supabase);
+     //   console.log(reporteCaja);
 
         if( error ){
             console.error('Ocurrio un error al cerrar caja', error);
             throw 'No se cerro la caja, intentelo mas tarde';
         }
 
-        res.status(200).json(cajaCerrada);
+        res.status(200).json(reporteCaja);
 
     } catch (error) {
         console.error('Ocurrio un error: ', error);
@@ -730,9 +733,6 @@ const recuperarVentaGuardada = async (req, res) => {
         });
     }
   };
-
-
-  
 
   const generarFactura = async (req, res) => {
     const supabase = req.supabase;

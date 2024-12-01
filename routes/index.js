@@ -55,6 +55,9 @@ const comprasRouter = require('./ComprasRoutes');
 const PromocionesP = require('./PromocionesPRoutes');
 const PromocionesC = require('./PromocionesCRoutes');
 
+// Dashboard
+const dashboardRouter  = require('./dashboardRoutes.js')
+
 
 
 //logins
@@ -109,6 +112,9 @@ router.use('/compras', comprasRouter);
 //Administrar Ventas y Compras
 router.use('/AdminVentas', AdminVentas);
 router.use('/AdminCompras', AdminCompras);
+
+// Dashboard
+router.use('/dashboard', dashboardRouter);
 
 
 

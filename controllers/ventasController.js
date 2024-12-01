@@ -444,7 +444,8 @@ const recuperarVentaGuardada = async (req, res) => {
             supabase.from('Ventas')
         .insert([asignar]).select('id_venta'),
         supabase.rpc('actualizar_num_factura', {id_sucursal_param: id_sucursal})
-        .select('*')
+        .select('*'),
+        calculos.existeCaja(id_usuario, supabase)
          ];
 
          const resultados = await Promise.all(promesas);
@@ -453,6 +454,8 @@ const recuperarVentaGuardada = async (req, res) => {
         const { data: venta, error } = resultados[0];
 
         const { data: num_factura, error: errorNumFactura } = resultados[1];
+
+        const { resultado: resultadoCaja, caja, error: errorCaja } = resultados[2];
 
         if(errorNumFactura){
             console.error('Error al obtener los datos de la tabla:', errorNumFactura.message);
@@ -464,12 +467,24 @@ const recuperarVentaGuardada = async (req, res) => {
            throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
         }
 
-        const datosCodigoFactura = {
+        if(errorCaja){
+            console.error('Error al obtener los datos de la caja:', error.message);
+            throw new Error(errorCaja);
+         }
+
+         if(!resultadoCaja){
+            throw 'este usuario no tiene una caja abierta!';
+         }
+
+         console.log(caja);
+
+        const datosCodigoFacturaCaja = {
             id_sucursal: id_sucursal,
-            num_factura: num_factura
+            num_factura: num_factura,
+            id_caja: caja.id_caja
         };
 
-      const {exitos, factura} = await calculos.calcularDetallesVenta(venta[0].id_venta, datosCodigoFactura, productos, id_usuario, supabase);
+      const {exitos, factura} = await calculos.calcularDetallesVenta(venta[0].id_venta, datosCodigoFacturaCaja, productos, id_usuario, supabase);
 
        if (exitos != productos.length){
         throw 'Algunos productos no fueron agregados';

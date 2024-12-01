@@ -2,7 +2,7 @@ const { obtenerPromos } = require('./promocionesSvs.js');
 const { necesitaAlertStockMin, necesitaAlertStockMax } = require('./alerts.js');
 
 const calculos = {
-    async calcularDetallesVenta(id_venta, datosCodigoFactura, productos, id_usuario, supabase) {
+    async calcularDetallesVenta(id_venta, datosCodigoFacturaCaja, productos, id_usuario, supabase) {
 
         let exitos = 0;
         let subTotalVenta = 0;
@@ -34,8 +34,8 @@ const calculos = {
             await Promise.all(promesas);
             
             const [factura] = await Promise.all([
-                this.postFactura(id_venta, datosCodigoFactura, productos, subTotalVenta, totalDescuento, supabase),
-                this.calcularSubtotalVenta(id_venta, subTotalVenta, supabase)
+                this.postFactura(id_venta, datosCodigoFacturaCaja, productos, subTotalVenta, totalDescuento, supabase),
+                this.calcularSubtotalVenta(id_venta, datosCodigoFacturaCaja.id_caja, subTotalVenta, supabase)
             ]);
         return { exitos, factura }
         }
@@ -75,11 +75,12 @@ const calculos = {
     },
       
 
-      async calcularSubtotalVenta(id_venta, subTotalVenta, supabase){
+      async calcularSubtotalVenta(id_venta, id_caja, subTotalVenta, supabase){
         try {
             const { error } = await supabase.from('Ventas')
             .update({
-                sub_total: subTotalVenta
+                sub_total: subTotalVenta,
+                id_caja: id_caja
             })
             .eq('id_venta', id_venta);
     
@@ -218,7 +219,7 @@ const calculos = {
         }
       },
     
-      async postFactura(id_venta, datosCodigoFactura, productos, subTotalVenta, totalDescuento, supabase){
+      async postFactura(id_venta, datosCodigoFacturaCaja, productos, subTotalVenta, totalDescuento, supabase){
         let arrayProductos = [];
 
         const promesas = productos.map(async(producto) => {
@@ -246,7 +247,7 @@ const calculos = {
             const { data: factura, error } = await supabase.from('facturas')
             .insert({
                 id_venta: id_venta,
-                codigo_factura: `${datosCodigoFactura.id_sucursal}-${datosCodigoFactura.num_factura}`,
+                codigo_factura: `${datosCodigoFacturaCaja.id_sucursal}-${datosCodigoFacturaCaja.num_factura}`,
                 tipo_factura: "Pendiente",
                 total_extento: impuestos.extento,
                 gravado_15: impuestos.gravado_15,

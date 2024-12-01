@@ -88,10 +88,7 @@ const calculos = {
                 console.error('Error al obtener los datos de la tabla factura:', error.message);
                 throw new Error('Ocurrió un error al obtener datos de la tabla producto.');
             }
-    
-           
 
-    
         } catch (error) {
             console.error('Error en el proceso:', error);
             return 'Error al aplicar subtotal venta '+error;

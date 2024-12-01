@@ -674,9 +674,9 @@ const recuperarVentaGuardada = async (req, res) => {
         const { data: cajaCerrada, error } = await supabase
         .from('caja')
 
-        // .update({
-        //     abierto: false
-        // })
+        .update({
+            abierto: false
+        })
         .select('id_caja, created_at, valor_inicial, valor_actual')
         .eq('id_caja', caja.id_caja);
 

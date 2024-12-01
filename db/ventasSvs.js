@@ -397,7 +397,8 @@ const calculos = {
         try {
             const { data: venta, error } = await supabase.from('Ventas')
             .update({
-                estado: estado, descripcion: descripcion
+                estado: estado, 
+                descripcion: descripcion
             })
             .select('estado')
             .eq('id_venta', id_venta);
@@ -487,27 +488,27 @@ const calculos = {
       },
     
     
-      async cambiarEstadoVenta(id_venta, supabase, estado){
-        try {
-            const { data: venta, error } = await supabase.from('Ventas')
-            .update({
-                estado: estado
-            })
-            .select('estado')
-            .eq('id_venta', id_venta);
+    //   async cambiarEstadoVenta(id_venta, supabase, estado){
+    //     try {
+    //         const { data: venta, error } = await supabase.from('Ventas')
+    //         .update({
+    //             estado: estado
+    //         })
+    //         .select('estado')
+    //         .eq('id_venta', id_venta);
     
-            if(error){
-                console.error('Error al obtener los datos de la tabla:', error.message);
-                throw new Error('Ocurrió un error al actualizar estado de ventas.');
-            }
+    //         if(error){
+    //             console.error('Error al obtener los datos de la tabla:', error.message);
+    //             throw new Error('Ocurrió un error al actualizar estado de ventas.');
+    //         }
     
-            return true;
+    //         return true;
     
-        } catch (error) {
-            console.error('Error en el proceso:', error);
-            return 'Error al recuperar total de venta '+error;
-        }
-      },
+    //     } catch (error) {
+    //         console.error('Error en el proceso:', error);
+    //         return 'Error al recuperar total de venta '+error;
+    //     }
+    //   },
 
       async existeCaja(id_usuario, supabase){
         try{

@@ -4,6 +4,7 @@ const register = async (req, res) => {
   const {
     nombre,
     nombre_usuario,
+    rtn,
     apellido_usuario,
     id_categoria,
     correo_principal,
@@ -23,6 +24,7 @@ const register = async (req, res) => {
       .insert([{
         nombre: nombre,
         id_categoria: id_categoria,
+        rtn: rtn,
         correo_principal: correo_principal,
         telefono_principal: telefono_principal,
         usa_SAR: usa_SAR
@@ -92,8 +94,6 @@ const register = async (req, res) => {
     });
   }
 };
-
-
 
 module.exports = {
   register,

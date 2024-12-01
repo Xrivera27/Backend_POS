@@ -1,7 +1,7 @@
 const TABLA_PROMOCIONES = 'Producto_promocion';
 const TABLA_PRODUCTO = 'producto';
 const { getEmpresaId } = require('../db/empresaSvc');
-const { eliminarPromoAlert, crearAlertPromoProduct } = require('../db/alerts');
+const { eliminarPromoAlert, crearAlertPromoProduct, eliminarPromoAlertCategory } = require('../db/alerts.js');
 
 const getPromocionesEmpresa = async (req, res) => {
     const supabase = req.supabase;
@@ -318,7 +318,14 @@ const eliminarPromocion = async (req, res) => {
             return res.status(403).json({ error: 'No tiene permisos para eliminar esta promoción' });
         }
 
-        // Eliminar la promoción
+        // Primero eliminar las alertas asociadas
+        const { resultado: alertasEliminadas } = await eliminarPromoAlert(id, supabase);
+        
+        if (!alertasEliminadas) {
+            throw new Error('Error al eliminar las alertas asociadas');
+        }
+
+        // Después eliminar la promoción
         const { error } = await supabase
             .from(TABLA_PROMOCIONES)
             .delete()
@@ -332,7 +339,6 @@ const eliminarPromocion = async (req, res) => {
         res.status(500).json({ error: 'Error al eliminar promoción', details: error.message });
     }
 };
-
 const getProductosEmpresa = async (req, res) => {
     const supabase = req.supabase;
     const id_usuario = req.user.id_usuario;

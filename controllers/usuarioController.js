@@ -111,21 +111,23 @@ const getUsuarioOfSucursal = async (req, res) => {
 
     const { data: usuarios, error } = await supabase.from('Usuarios')
     .select('id_usuario, id_rol, nombre, apellido, nombre_usuario, correo, telefono, direccion, estado')
+    .eq('estado', true)
     .in('id_usuario', ids.map(i => i.id_usuario));
 
-    if(usuarios.length > 0){
-      usuarios.forEach(element => {
+    const usuariosFiltro = usuarios.filter(u => u.id_rol !== 4 && u.id_rol !== 2 && u.id_usuario !== Number(id_usuario) );
+
+    if(usuariosFiltro && usuariosFiltro.length > 0){
+      usuariosFiltro.forEach(element => {
       element.sucursales = id_sucursal;
       });
     }
+    console.log()
 
     if(error){
       throw error;
     }
 
-    res.status(200).json(usuarios);
-
-    //const { data: usuarios, error } = await supabase.from('Usuarios')
+    res.status(200).json(usuariosFiltro);
     
   } catch (error) {
     console.error('Ocurrio un error: ', error);

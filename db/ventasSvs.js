@@ -484,29 +484,6 @@ const calculos = {
             }
         }
       },
-    
-    
-    //   async cambiarEstadoVenta(id_venta, supabase, estado){
-    //     try {
-    //         const { data: venta, error } = await supabase.from('Ventas')
-    //         .update({
-    //             estado: estado
-    //         })
-    //         .select('estado')
-    //         .eq('id_venta', id_venta);
-    
-    //         if(error){
-    //             console.error('Error al obtener los datos de la tabla:', error.message);
-    //             throw new Error('Ocurrió un error al actualizar estado de ventas.');
-    //         }
-    
-    //         return true;
-    
-    //     } catch (error) {
-    //         console.error('Error en el proceso:', error);
-    //         return 'Error al recuperar total de venta '+error;
-    //     }
-    //   },
 
       async existeCaja(id_usuario, supabase){
         try{
@@ -563,6 +540,76 @@ const calculos = {
                 message: error,
                 resultado: false
             }
+        }
+      },
+
+      async reporteCaja(caja, supabase){
+        try {
+       const reporte = { 
+        fechaInicio: null,
+        fechaFinal: new Date(),
+        totalEfectivo : 0,
+         totalTarjeta : 0,
+         totalIsv15 : 0,
+         totalIsv18 : 0,
+
+         totalGravado15: 0,
+         totalGravado18: 0,
+         totalExtento: 0,
+         total: 0 
+        }
+
+            const { data: cierreCaja, error: cierreError } = await supabase.from('Ventas')
+            .select(`
+                id_venta,
+                facturas(
+                id_factura,
+                created_at,
+                tipo_factura,
+                gravado_15,
+                gravado_18,
+                total_extento,
+                ISV_15,
+                ISV_18,
+                tipo_factura,
+                total
+                )
+                `)
+               .eq('id_caja', caja.id_caja);
+
+                if(cierreError){
+                    throw cierreError;
+                }
+
+                if(cierreCaja && cierreCaja.length > 0){
+                    cierreCaja.forEach(cierre => {
+                        //console.log(cierre.fac)
+                        reporte.fechaInicio = new Date(caja.created_at).toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' });
+                        reporte.fechaFinal = reporte.fechaFinal.toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' });
+                        if(cierre.facturas[0].tipo_factura === 'Efectivo'){
+                            reporte.totalEfectivo += cierre.facturas[0].total;
+                        }
+                        //Calculamos impuestos por productos
+                         reporte.totalGravado15 += cierre.facturas[0].gravado_15;
+                         reporte.totalGravado18 += cierre.facturas[0].gravado_18;
+                         reporte.totalExtento += cierre.facturas[0].total_extento;
+
+                         //calcular solo impuestos
+                         reporte.totalIsv15 += cierre.facturas[0].ISV_15;
+                         reporte.totalIsv18 += cierre.facturas[0].ISV_18;
+
+                         //calculamos total
+                         reporte.total += cierre.facturas[0].total;
+                    });
+                }
+                else{
+                    throw 'No hay ventas para esta caja.'
+                }
+
+                return reporte;
+        } catch (error) {
+            console.error('Ocurrio un error al generar reporte de caja: ', error);
+            throw error;
         }
       }
 }

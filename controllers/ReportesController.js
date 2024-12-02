@@ -266,4 +266,26 @@ const reporteVentasController = {
   }
 };
 
-module.exports = reporteVentasController;
+const getProductosOfInventorySucursal = async (req, res) => {
+  const supabase = req.supabase;
+  const id_usuario = req.params.id_usuario;
+ 
+
+  try {
+    const id_sucursal_param = await getSucursalesbyUser(id_usuario, supabase);
+      const {data: productos, error} = await supabase.rpc('view_inventory_only_sucursal', {id_sucursal_param})
+      .select('*');
+
+      if (error){
+          throw 'Ocurrio un error al obtener productos.'
+      }
+
+      res.status(200).json(productos);
+
+  } catch (error) {
+      console.log(error);
+      res.status(500).json(error);
+  }
+}
+
+module.exports = {reporteVentasController, getProductosOfInventorySucursal};

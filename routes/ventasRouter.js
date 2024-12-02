@@ -11,7 +11,8 @@ const { getPrePage,
     recuperarVentaGuardada, 
     postVenta,
     eliminarVenta,
-    pagarFacturaEfectivo, 
+    pagarFacturaEfectivo,
+    pagarFacturaTransferencia,
     eliminarProductoVenta,
     cajaAbiertaUsuario,
     crearCajaUsuario,
@@ -38,6 +39,7 @@ router.patch('/buscar-producto/:id_usuario', selectProductoCodigo);
 router.patch('/cerrar-caja', cerrarCajaUsuario);
 router.patch('/eliminar-producto/:id_usuario', eliminarProductoVenta);
 router.patch('/pagar-efectivo', pagarFacturaEfectivo);
+router.patch('/pagar-transferencia', pagarFacturaTransferencia);
 router.delete('/eliminar-venta/:id_venta/:id_factura', eliminarVenta);
 
 // Añadir esta línea junto con las otras rutas

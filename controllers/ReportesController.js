@@ -1,4 +1,4 @@
-const { getSucursalesbyUser } = require('../db/sucursalUsuarioSvc');
+const { existeRelacion, getIdUsersBySucursal, getSucursalesbyUser } = require('../db/sucursalUsuarioSvc.js');
 
 const reporteVentasController = {
   async getReporteVentas(req, res) {
@@ -288,4 +288,54 @@ const getProductosOfInventorySucursal = async (req, res) => {
   }
 }
 
-module.exports = {reporteVentasController, getProductosOfInventorySucursal};
+const getUsuarioOfSucursal = async (req, res) => {
+  try {
+    const supabase = req.supabase;
+
+    const id_usuario = req.params.id_usuario;
+    const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+
+    const promesas = [
+      existeRelacion(id_usuario, id_sucursal, supabase),
+      getIdUsersBySucursal(id_sucursal, supabase)
+    ];
+
+    const promesasResultados = await Promise.all(promesas);
+
+    const { resultado: resultRelacion } = promesasResultados[0];
+    const { resultado: resultIds, ids } = promesasResultados[1];
+
+    if(!resultRelacion){
+      throw 'Este usuario no pertenece a la sucursal especificada';
+    }
+
+    if(!resultIds){
+      throw 'Error al seleccionar usuarios de la sucursal';
+    }
+
+    const { data: usuarios, error } = await supabase.from('Usuarios')
+    .select('id_usuario, id_rol, nombre, apellido, nombre_usuario, correo, telefono, direccion, estado')
+    .eq('estado', true)
+    .in('id_usuario', ids.map(i => i.id_usuario));
+
+    const usuariosFiltro = usuarios.filter(u => u.id_rol !== 4 && u.id_rol !== 2 && u.id_usuario !== Number(id_usuario) );
+
+    if(usuariosFiltro && usuariosFiltro.length > 0){
+      usuariosFiltro.forEach(element => {
+      element.sucursales = id_sucursal;
+      });
+    }
+
+    if(error){
+      throw error;
+    }
+
+    res.status(200).json(usuariosFiltro);
+    
+  } catch (error) {
+    console.error('Ocurrio un error: ', error);
+    res.status(500).json({error: 'Fallo interno del servidor'});
+  }
+}
+
+module.exports = {reporteVentasController, getProductosOfInventorySucursal, getUsuarioOfSucursal};

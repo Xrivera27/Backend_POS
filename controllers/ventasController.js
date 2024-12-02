@@ -566,6 +566,7 @@ const recuperarVentaGuardada = async (req, res) => {
   const pagarFacturaEfectivo = async (req, res) => {
     const supabase = req.supabase;
     const { pago, id_venta, id_usuario, descripcion } = req.body;
+    console.log(pago);
 
     try {
 
@@ -663,6 +664,9 @@ const recuperarVentaGuardada = async (req, res) => {
     const supabase = req.supabase;
     const { id_usuario } = req.body;
     try {
+        const date = new Date();
+        const closed_at = date.toISOString();
+
         const {resultado, caja} = await calculos.existeCaja(id_usuario, supabase);
         
         if(!resultado){
@@ -675,9 +679,10 @@ const recuperarVentaGuardada = async (req, res) => {
         .from('caja')
 
         .update({
-            abierto: false
+            abierto: false,
+            closed_at: closed_at
         })
-        .select('id_caja, created_at, valor_inicial, valor_actual')
+        .select('id_caja, created_at, closed_at, valor_inicial, valor_actual')
         .eq('id_caja', caja.id_caja);
 
         const reporteCaja = await calculos.reporteCaja(cajaCerrada[0], supabase);

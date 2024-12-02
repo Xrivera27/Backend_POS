@@ -547,7 +547,7 @@ const calculos = {
         try {
        const reporte = { 
         fechaInicio: null,
-        fechaFinal: new Date(),
+        fechaFinal: null,
         totalEfectivo : 0,
          totalTarjeta : 0,
          totalIsv15 : 0,
@@ -584,8 +584,6 @@ const calculos = {
                 if(cierreCaja && cierreCaja.length > 0){
                     cierreCaja.forEach(cierre => {
                         //console.log(cierre.fac)
-                        reporte.fechaInicio = new Date(caja.created_at).toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' });
-                        reporte.fechaFinal = reporte.fechaFinal.toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' });
                         if(cierre.facturas[0].tipo_factura === 'Efectivo'){
                             reporte.totalEfectivo += cierre.facturas[0].total;
                         }
@@ -601,10 +599,15 @@ const calculos = {
                          //calculamos total
                          reporte.total += cierre.facturas[0].total;
                     });
+
+                    reporte.fechaInicio = new Date(caja.created_at).toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' });
+                    reporte.fechaFinal = new Date(caja.closed_at).toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' });
                 }
                 else{
                     throw 'No hay ventas para esta caja.'
                 }
+
+                
 
                 return reporte;
         } catch (error) {

@@ -70,18 +70,28 @@ const getComprasPendientes = async (req, res) => {
     }
 };
 
-const getClientes = async (req, res) => {
+const getClientesEmpresa = async (req, res) => {
     const supabase = req.supabase;
-    try {
-        const { data: clientes, error } = await supabase
-        .from('clientes')
-        .select('id_cliente, nombre, email, telefono');
+    const id_usuario = req.params.id_usuario;
 
-        if (error) {
-            return res.status(500).json({ error: 'Error al obtener clientes: ' + error.message });
+    try {
+        const id_empresa = await getEmpresaId(id_usuario, supabase);
+
+        if (!id_empresa) {
+            return res.status(404).json({ error: 'Empresa no encontrada para el usuario especificado.' });
         }
 
-        res.status(200).json(clientes);
+        const { data: clientes, count, error } = await supabase
+            .from('Clientes')
+            .select('*', { count: 'exact' }) 
+            .eq('id_empresa', id_empresa)
+            .eq('estado', true);
+
+        if (error) {
+            return res.status(500).json({ error: 'Error al contar clientes: ' + error.message });
+        }
+
+        res.status(200).json({ totalClientes: count });
     } catch (error) {
         console.error('Error en el endpoint de clientes:', error);
         res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
@@ -107,4 +117,4 @@ const getAlertas = async (req, res) => {
     }
 };
 
-module.exports = { getVentasEmpresa, getComprasPendientes, getClientes, getAlertas };
+module.exports = { getVentasEmpresa, getComprasPendientes, getClientesEmpresa, getAlertas };

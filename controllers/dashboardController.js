@@ -50,7 +50,6 @@ const getVentasEmpresa = async (req, res) => {
     }
 };
 
-
 const getComprasPendientes = async (req, res) => {
     const supabase = req.supabase;
     try {
@@ -98,23 +97,37 @@ const getClientesEmpresa = async (req, res) => {
     }
 };
 
-const getAlertas = async (req, res) => {
+const getAlertasPromocion = async (req, res) => {
     const supabase = req.supabase;
-    try {
-        const { data: alertas, error } = await supabase
-        .from('alertas')
-        .select('id_alerta, mensaje, tipo, fecha')
-        .order('fecha', { ascending: false });
+    const id_usuario = req.params.id_usuario;
 
-        if (error) {
-            return res.status(500).json({ error: 'Error al obtener alertas: ' + error.message });
+    if (!id_usuario) {
+        return res.status(400).json({ error: 'ID de usuario no proporcionado.' });
+    }
+
+    try {
+        const id_empresa = await getEmpresaId(id_usuario, supabase);
+
+        if (!id_empresa) {
+            return res.status(404).json({ error: 'Empresa no encontrada para el usuario especificado.' });
         }
 
-        res.status(200).json(alertas);
+        const { data: alertas, count, error } = await supabase
+            .from('alerts')
+            .select('*', { count: 'exact' })
+            .eq('id_empresa', id_empresa)
+            .in('tipo', ['promocion_categoria_entrante', 'promocion_producto_entrante']);
+
+        if (error) {
+            console.error('Supabase error:', error);
+            return res.status(500).json({ error: 'Error al obtener alertas de promoción: ' + error.message });
+        }
+
+        res.status(200).json({ totalAlertas: count, alertas });
     } catch (error) {
-        console.error('Error en el endpoint de alertas:', error);
+        console.error('Error en el endpoint de alertas de promoción:', error);
         res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
     }
 };
 
-module.exports = { getVentasEmpresa, getComprasPendientes, getClientesEmpresa, getAlertas };
+module.exports = { getVentasEmpresa, getComprasPendientes, getClientesEmpresa, getAlertasPromocion };

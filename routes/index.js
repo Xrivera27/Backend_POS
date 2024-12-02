@@ -63,6 +63,14 @@ const dashboardRouter  = require('./dashboardRoutes.js')
 
 
 
+//Perdomo
+const EmpresaPerdomo  = require('./EmpresaRoutePerdomo.js')
+const UsuarioPerdomo  = require('./UsuarioRoutesPerdomo.js')
+const CategoriaEmpresaPerdomo  = require('./CategoriaEmpresaRoutePerdomo.js')
+
+
+
+
 //logins
 router.use('/login', loginRoutes);
 router.use('/perfil', perfilRoutes);
@@ -124,6 +132,13 @@ router.use('/token', TokenRoute);
 // Dashboard
 router.use('/dashboard', dashboardRouter);
 
+
+//Perdomo
+
+router.use('/empresas', EmpresaPerdomo);
+router.use('/UsuariosP', UsuarioPerdomo);
+
+router.use('/categoriaempresaP', CategoriaEmpresaPerdomo);
 
 
 module.exports = router;

@@ -153,28 +153,51 @@ exports.updateEmpresa = async (req, res) => {
   }
 };
 
-// Desactivar empresa (soft delete)
+// ... (resto de los métodos se mantienen igual)
+
+// Desactivar empresa y sus sucursales (soft delete)
 exports.deleteEmpresa = async (req, res) => {
   console.log('Iniciando deleteEmpresa...');
   console.log('ID recibido:', req.params.id);
   
   try {
     const { id } = req.params;
-    console.log('Ejecutando desactivación en Supabase para ID:', id);
     
-    const { data, error } = await supabase
+    // Iniciar una transacción para asegurar que ambas operaciones se completen
+    const { data: empresaData, error: empresaError } = await supabase
       .from('Empresas')
       .update({ estado: false })
       .eq('id_empresa', id)
       .select();
-    
-    if (error) {
-      console.error('Error en deleteEmpresa:', error);
-      return res.status(400).json({ error: error.message });
+
+    if (empresaError) {
+      console.error('Error al desactivar empresa:', empresaError);
+      return res.status(400).json({ error: empresaError.message });
+    }
+
+    // Desactivar todas las sucursales asociadas a la empresa
+    const { data: sucursalesData, error: sucursalesError } = await supabase
+      .from('Sucursales')
+      .update({ estado: false })
+      .eq('id_empresa', id)
+      .select();
+
+    if (sucursalesError) {
+      console.error('Error al desactivar sucursales:', sucursalesError);
+      return res.status(400).json({ error: sucursalesError.message });
     }
     
-    console.log('Empresa desactivada exitosamente:', data);
-    res.status(200).json({ message: 'Empresa desactivada exitosamente' });
+    console.log('Empresa y sucursales desactivadas exitosamente:', {
+      empresa: empresaData,
+      sucursales: sucursalesData
+    });
+
+    res.status(200).json({ 
+      message: 'Empresa y sucursales desactivadas exitosamente',
+      empresaDesactivada: empresaData[0],
+      sucursalesDesactivadas: sucursalesData.length
+    });
+
   } catch (err) {
     console.error('Error inesperado en deleteEmpresa:', err);
     res.status(500).json({ error: err.message });

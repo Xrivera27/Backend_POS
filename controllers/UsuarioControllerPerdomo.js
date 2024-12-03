@@ -39,11 +39,12 @@ const postUsuario = async (req, res) => {
       contraseña, 
       correo, 
       telefono, 
-      direccion 
+      direccion,
+      id_sucursal
     } = req.body;
 
-    console.log('Ejecutando inserción en Supabase...');
-    const { data, error } = await supabase
+    // Crear el usuario
+    const { data: usuario, error: userError } = await supabase
       .from('Usuarios')
       .insert({
         nombre,
@@ -56,15 +57,34 @@ const postUsuario = async (req, res) => {
         id_rol: 4,
         estado: true
       })
-      .select();
+      .select()
+      .single();
 
-    if (error) {
-      console.error('Error en postUsuario:', error);
-      return res.status(400).json({ error: error.message });
+    if (userError) {
+      console.error('Error al crear usuario:', userError);
+      return res.status(400).json({ error: userError.message });
     }
 
-    console.log('Usuario creado exitosamente:', data);
-    res.status(200).json(data[0]);
+    // Crear la relación en sucursales_usuarios
+    const { error: sucursalError } = await supabase
+      .from('sucursales_usuarios')
+      .insert({
+        id_usuario: usuario.id_usuario,
+        id_sucursal: id_sucursal
+      });
+
+    if (sucursalError) {
+      console.error('Error al asociar sucursal:', sucursalError);
+      // Si falla la asociación, eliminamos el usuario creado
+      await supabase
+        .from('Usuarios')
+        .delete()
+        .eq('id_usuario', usuario.id_usuario);
+      return res.status(400).json({ error: sucursalError.message });
+    }
+
+    console.log('Usuario creado y asociado exitosamente:', usuario);
+    res.status(200).json(usuario);
   } catch (err) {
     console.error('Error inesperado en postUsuario:', err);
     res.status(500).json({ error: err.message });

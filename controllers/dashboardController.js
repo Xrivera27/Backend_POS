@@ -287,4 +287,116 @@ const getVentasUltimosTresMeses = async (req, res) => {
     }
 };
 
-module.exports = { getVentasEmpresa, getAlertasPorPromocionProducto, getClientesEmpresa, getAlertasPromocion, getVentasUltimosTresMeses };
+const getCategoriasPopulares = async (req, res) => {
+    const supabase = req.supabase;
+    const id_usuario = req.params.id_usuario;
+
+    try {
+        const id_empresa = await getEmpresaId(id_usuario, supabase);
+        
+        if (!id_empresa) {
+            return res.status(404).json({ error: 'Empresa no encontrada para el usuario especificado.' });
+        }
+
+        // Obtener categorías de la empresa
+        const { data: categorias, error: errorCategorias } = await supabase
+            .from('categoria_producto')
+            .select('id_categoria, nombre_categoria')
+            .eq('id_empresa', id_empresa)
+            .eq('estado', true);
+
+        if (errorCategorias) {
+            return res.status(500).json({ error: 'Error al obtener categorías: ' + errorCategorias.message });
+        }
+
+        // Obtener ventas_detalles con el nombre correcto de la tabla
+        const { data: ventasDetalles, error: errorVentas } = await supabase
+            .from('ventas_detalles')
+            .select(`
+                cantidad,
+                id_producto,
+                id_detalle_venta,
+                id_venta
+            `);
+
+        if (errorVentas) {
+            return res.status(500).json({ error: 'Error al obtener detalles de ventas: ' + errorVentas.message });
+        }
+
+        // Obtener la asignación de productos a categorías
+        const { data: asignaciones, error: errorAsignaciones } = await supabase
+            .from('asignacion_producto_categoria')
+            .select('id_producto, id_categoria_producto');
+
+        if (errorAsignaciones) {
+            return res.status(500).json({ error: 'Error al obtener asignaciones de categorías: ' + errorAsignaciones.message });
+        }
+
+        // Crear un mapa de producto a categoría
+        const productoCategoriaMap = {};
+        asignaciones.forEach(asig => {
+            productoCategoriaMap[asig.id_producto] = asig.id_categoria_producto;
+        });
+
+        // Agrupar ventas por categoría
+        const ventasPorCategoria = {};
+        ventasDetalles.forEach(venta => {
+            const idCategoria = productoCategoriaMap[venta.id_producto];
+            if (idCategoria) {
+                ventasPorCategoria[idCategoria] = (ventasPorCategoria[idCategoria] || 0) + venta.cantidad;
+            }
+        });
+
+        // Crear array de categorías con sus cantidades
+        const categoriasConVentas = categorias.map(categoria => ({
+            id: categoria.id_categoria,
+            nombre: categoria.nombre_categoria,
+            cantidadTotal: ventasPorCategoria[categoria.id_categoria] || 0
+        }));
+
+        // Obtener top 3 categorías
+        const top3Categorias = categoriasConVentas
+            .sort((a, b) => b.cantidadTotal - a.cantidadTotal)
+            .slice(0, 3);
+
+        // Formatear datos para el gráfico
+        const chartData = {
+            pieChartData: {
+                labels: top3Categorias.map(c => c.nombre),
+                datasets: [{
+                    data: top3Categorias.map(c => c.cantidadTotal),
+                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56'],
+                    hoverBackgroundColor: ['#FF6384', '#36A2EB', '#FFCE56'],
+                }]
+            },
+            pieChartOptions: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.label}: ${context.raw} unidades vendidas`;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        res.status(200).json({
+            chartData,
+            topCategorias: top3Categorias
+        });
+
+    } catch (error) {
+        console.error('Error en el endpoint de categorías más vendidas:', error);
+        res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
+    }
+};
+
+
+
+module.exports = { getVentasEmpresa, getAlertasPorPromocionProducto, getClientesEmpresa, getAlertasPromocion, getVentasUltimosTresMeses, getCategoriasPopulares };

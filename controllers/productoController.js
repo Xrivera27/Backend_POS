@@ -44,8 +44,6 @@ const getProductosOfInventorySucursal = async (req, res) => {
     }
 }
 
-
-
 const getExtraInfoProduct = async (req, res) => {
     const supabase = req.supabase;
     const id_producto  = req.params.id_producto;

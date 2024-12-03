@@ -87,6 +87,31 @@ const getSucursalesbyUsuarioSummary = async (req, res) => {
     }
 }
 
+const getDatosSucursal = async(req, res) => {
+    const supabase = req.supabase;
+    const id_usuario = req.params.id_usuario
+    try {
+      const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+  
+      const { data: sucursal, error } = await supabase.from('Sucursales')
+      .select('nombre_administrativo, correo, telefono, direccion')
+      .eq('id_sucursal', id_sucursal)
+      .single();
+  
+      if(error){
+        console.error("Fallo interno en el servidor. ", error);
+        throw 'Ocurrio un error al intentar obtener datos de la sucursal.';
+      }
+  
+      res.status(200).json(sucursal);
+  
+    } catch (error) {
+      res.status(500).json({
+        message: 'Error inesperado.'
+      })
+    }
+  }
+
 const getSucursalValida = async (req, res) => {
     const id_usuario = req.params.id_usuario;
     const supabase = req.supabase;
@@ -220,4 +245,4 @@ const desactivarSucursal = async (req, res) => {
     }
 }
 
-module.exports = { getSucursales, getSucursalesbyUsuario, getSucursalesbyUsuarioSummary,patchSucursal, postSucursal, desactivarSucursal, getSucursalValida }
+module.exports = { getSucursales, getDatosSucursal, getSucursalesbyUsuario, getSucursalesbyUsuarioSummary,patchSucursal, postSucursal, desactivarSucursal, getSucursalValida }

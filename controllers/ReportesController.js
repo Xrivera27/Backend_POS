@@ -350,7 +350,6 @@ const getCajerosReportes = async (req, res) => {
   
   try {
 
-
 const inicioTimestampZ = new Date(fechaInicio + 'T00:00:00+00:00').toISOString();
 const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
 
@@ -414,4 +413,56 @@ const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
   
 }
 
-module.exports = {getCajerosReportes, reporteVentasController, getProductosOfInventorySucursal, getUsuarioOfSucursal};
+const getClientesReportes = async (req, res) => {
+  const id_usuario = req.params.id_usuario;
+  const fechaInicio = req.params.fechaInicio;
+  const fechaFin = req.params.fechaFin;
+  const supabase = req.supabase;
+  let idsUsar = [];
+  let datosReporte = [];
+  
+  try {
+
+const inicioTimestampZ = new Date(fechaInicio + 'T00:00:00+00:00').toISOString();
+const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
+
+    const id_rol = await getRolByUsuario(id_usuario, supabase);
+
+    if(id_rol === 4){
+
+      const id_empresa_param = await getEmpresaId(id_usuario, supabase);
+      const {data: registros, error} = await supabase.rpc('obtener_reportes_por_clientes_empresa', 
+        {p_id_empresa: id_empresa_param, p_fecha_inicio: inicioTimestampZ, p_fecha_fin: finTimestampZ})
+      if(error){
+        throw error;
+      }
+
+      datosReporte = registros;
+
+    }
+    else{
+      const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+
+ 
+      const {data: registros, error} = await supabase.rpc('obtener_reportes_por_clientes_sucursal', 
+            {p_id_sucursal: id_sucursal, p_fecha_inicio: inicioTimestampZ, p_fecha_fin: finTimestampZ})
+          if(error){
+            throw error;
+          }
+
+          datosReporte = registros;
+
+    }
+
+    res.status(200).json(datosReporte);
+
+  } catch (error) {
+    console.error('Ocurrio un error: ', error);
+    res.status(500).json({
+      message: 'Ocurrio un error en el servidor. Intente de nuevo'
+    })
+  }
+  
+}
+
+module.exports = {getCajerosReportes, getClientesReportes, reporteVentasController, getProductosOfInventorySucursal, getUsuarioOfSucursal};

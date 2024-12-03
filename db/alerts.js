@@ -343,6 +343,7 @@ const crearAlertStockMaximo = async (producto, id_usuario, stock_max, stock_actu
 
 const crearAlertPromoProduct = async (promocion, diasRestantes, supabase) => {
     try {
+        let descripcion;
         const { resultado } = await eliminarPromoAlert(promocion.id, supabase);
         const {id_empresa, resultado: existeEmpresa} = await getEmpresaIdbyProduct(promocion.producto_Id, supabase);
         if(!existeEmpresa){
@@ -358,11 +359,16 @@ const crearAlertPromoProduct = async (promocion, diasRestantes, supabase) => {
         return;
     }
 
+     descripcion = `${promocion.promocion_nombre} se activara en ${diasRestantes} dias.`;
+    if(puntaje === 100){
+        descripcion = `${promocion.promocion_nombre} está activa.`;
+    }
+
     const { data: alert, error: alertError } = await supabase.from('alerts')
     .insert({
         tipo: 'promocion_producto_entrante',
         puntaje: Math.trunc(puntaje),
-        descripcion: `${promocion.promocion_nombre} se activara en ${diasRestantes} dias.`,
+        descripcion: descripcion,
         id_empresa: id_empresa
     })
     .select('id_alert');
@@ -390,6 +396,7 @@ const crearAlertPromoProduct = async (promocion, diasRestantes, supabase) => {
 
 const eliminarPromoAlert = async (id_promocion, supabase) => {
     try {
+
         const {  data: id_alerta, error: errorAlerta } = await supabase.from('alerts_promocion')
         .select('id_alert')
         .eq('id_promocion_producto', id_promocion);
@@ -414,8 +421,6 @@ const eliminarPromoAlert = async (id_promocion, supabase) => {
             throw errorPromo;
         }
 
-        console.log(id_alert_selected);
-
         const { error: errorAlert } = await supabase.from('alerts')
         .delete()
         .eq('id_alert', id_alert_selected);
@@ -438,6 +443,7 @@ const eliminarPromoAlert = async (id_promocion, supabase) => {
 
 const crearAlertPromoCategory = async (promocion, diasRestantes, supabase) => {
     try {
+        let descripcion;
         const { resultado } = await eliminarPromoAlertCategory(promocion.id, supabase);
         const {id_empresa, resultado: existeEmpresa} = await getEmpresaIdbyCategoria(promocion.categoria_producto_Id, supabase);
         if(!existeEmpresa){
@@ -453,11 +459,16 @@ const crearAlertPromoCategory = async (promocion, diasRestantes, supabase) => {
         return;
     }
 
+    descripcion = `${promocion.nombre_promocion} se activara en ${diasRestantes} dias.`;
+    if(puntaje === 100){
+        descripcion = `${promocion.nombre_promocion} está activa.`;
+    }
+
     const { data: alert, error: alertError } = await supabase.from('alerts')
     .insert({
         tipo: 'promocion_categoria_entrante',
         puntaje: Math.trunc(puntaje),
-        descripcion: `${promocion.nombre_promocion} se activara en ${diasRestantes} dias.`,
+        descripcion: descripcion,
         id_empresa: id_empresa
     })
     .select('id_alert');

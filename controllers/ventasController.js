@@ -740,7 +740,7 @@ const recuperarVentaGuardada = async (req, res) => {
 
   const cerrarCajaUsuario = async(req, res) => {
     const supabase = req.supabase;
-    const { id_usuario } = req.body;
+    const { id_usuario, dineroCaja } = req.body;
     try {
         const date = new Date();
         const closed_at = date.toISOString();
@@ -753,23 +753,32 @@ const recuperarVentaGuardada = async (req, res) => {
             });
         }
 
+        // Guardamos el valor_actual antes de cerrar la caja
+        const valorSistema = caja.valor_actual;
+
         const { data: cajaCerrada, error } = await supabase
         .from('caja')
-
         .update({
             abierto: false,
-            closed_at: closed_at
+            closed_at: closed_at,
+            dinerocaja: dineroCaja,
+            valor_actual: valorSistema // Mantenemos el valor_actual
         })
-        .select('id_caja, created_at, closed_at, valor_inicial, valor_actual')
-        .eq('id_caja', caja.id_caja);
+        .eq('id_caja', caja.id_caja)
+        .select('id_caja, created_at, closed_at, valor_inicial, valor_actual, dinerocaja')
+        .single();
 
-        const reporteCaja = await calculos.reporteCaja(cajaCerrada[0], supabase);
-     //   console.log(reporteCaja);
-
-        if( error ){
+        if(error){
             console.error('Ocurrio un error al cerrar caja', error);
             throw 'No se cerro la caja, intentelo mas tarde';
         }
+
+        if(!cajaCerrada) {
+            throw 'No se pudo obtener la información de la caja cerrada';
+        }
+
+        // Pasamos el valor_actual al reporte
+        const reporteCaja = await calculos.reporteCaja(cajaCerrada, supabase, valorSistema);
 
         res.status(200).json(reporteCaja);
 
@@ -777,9 +786,9 @@ const recuperarVentaGuardada = async (req, res) => {
         console.error('Ocurrio un error: ', error);
         res.status(500).json({
             error: error
-        })
+        });
     }
-  }
+};
 
   const crearCajaUsuario = async(req, res) => {
     const supabase = req.supabase;
@@ -1118,86 +1127,187 @@ const recuperarVentaGuardada = async (req, res) => {
 };
 
 const generarPDFCierreCaja = async (req, res) => {
-    console.log('Iniciando generación de PDF en el backend...');
     try {
-      const reporte = req.body;
-      console.log('Reporte recibido:', reporte);
-      
-      const doc = new PDFDocument();
-      
-      // Configurar headers
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'attachment; filename=cierre_caja.pdf');
-      
-      doc.pipe(res);
-      
-      // Contenido del PDF
-      doc.font('Helvetica-Bold')
-         .fontSize(20)
-         .text('Reporte de Cierre de Caja', { align: 'center' })
-         .moveDown();
-      
-      console.log('Agregando información básica...');
-      doc.fontSize(12)
-         .text(`Fecha de Apertura: ${reporte.fechaInicio}`)
-         .text(`Fecha de Cierre: ${reporte.fechaFinal}`)
-         .moveDown();
-      
-      doc.font('Helvetica-Bold').text('Resumen de Ventas:').font('Helvetica');
-      
-      // Función helper para formatear moneda
-      const formatCurrency = (amount) => {
-        console.log('Formateando cantidad:', amount);
-        return `L. ${Number(amount).toFixed(2)}`;
-      };
-      
-      console.log('Agregando detalles del reporte...');
-      const detalles = [
-        { label: 'Total Efectivo:', value: formatCurrency(reporte.totalEfectivo) },
-        { label: 'Total Tarjeta:', value: formatCurrency(reporte.totalTarjeta) },
-        { label: 'Total ISV 15%:', value: formatCurrency(reporte.totalIsv15) },
-        { label: 'Total ISV 18%:', value: formatCurrency(reporte.totalIsv18) },
-        { label: 'Total Gravado 15%:', value: formatCurrency(reporte.totalGravado15) },
-        { label: 'Total Gravado 18%:', value: formatCurrency(reporte.totalGravado18) },
-        { label: 'Total Exento:', value: formatCurrency(reporte.totalExtento) },
-      ];
-      
-      console.log('Detalles a escribir:', detalles);
-      
-      detalles.forEach(item => {
-        console.log('Escribiendo detalle:', item);
-        doc.text(`${item.label} ${item.value}`);
-      });
-      
-      console.log('Agregando total final...');
-      doc.moveDown()
-         .font('Helvetica-Bold')
-         .text('Total Final:', { continued: true })
-         .text(formatCurrency(reporte.total), { align: 'right' });
-      
-      console.log('Agregando espacio para firmas...');
-      doc.moveDown(2)
-         .text('_______________________', { align: 'center' })
-         .text('Firma del Cajero', { align: 'center' });
-      
-      console.log('Finalizando documento PDF...');
-      doc.end();
-      
-      console.log('PDF generado exitosamente');
+        const reporte = req.body;
+        const doc = new PDFDocument();
+        
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=cierre_caja.pdf');
+        
+        doc.pipe(res);
+        
+        // Título
+        doc.font('Helvetica-Bold')
+           .fontSize(20)
+           .text('Reporte de Cierre de Caja', { align: 'center' })
+           .moveDown();
+        
+        // Información básica
+        doc.fontSize(12)
+           .text(`Fecha de Apertura: ${reporte.fechaInicio}`)
+           .text(`Fecha de Cierre: ${reporte.fechaFinal}`)
+           .moveDown();
+        
+        const formatCurrency = (amount) => {
+            return `L. ${Number(amount).toFixed(2)}`;
+        };
+        
+        // Resumen de ventas
+        doc.font('Helvetica-Bold')
+           .text('Resumen de Ventas:')
+           .moveDown(0.5);
+        
+        doc.font('Helvetica');
+        [
+            ['Total Efectivo:', formatCurrency(reporte.totalEfectivo)],
+            ['Total Transferencia:', formatCurrency(reporte.totalTarjeta)],
+            ['Total ISV 15%:', formatCurrency(reporte.totalIsv15)],
+            ['Total ISV 18%:', formatCurrency(reporte.totalIsv18)],
+            ['Total Gravado 15%:', formatCurrency(reporte.totalGravado15)],
+            ['Total Gravado 18%:', formatCurrency(reporte.totalGravado18)],
+            ['Total Exento:', formatCurrency(reporte.totalExtento)]
+        ].forEach(([label, value]) => {
+            doc.text(label, { continued: true })
+               .text(value, { align: 'right' })
+        });
+        
+        // Cuadre de caja
+        doc.moveDown()
+           .font('Helvetica-Bold')
+           .text('Cuadre de Caja:', { underline: true })
+           .moveDown(0.5);
+        
+        doc.font('Helvetica');
+        
+        // Calcular la diferencia
+        const diferencia = reporte.dineroDeclarado - reporte.total_sistema;
+        const haySobrante = diferencia > 0;
+        const hayFaltante = diferencia < 0;
+
+        [
+            ['Total en Sistema:', formatCurrency(reporte.total_sistema)],
+            ['Total en Caja:', formatCurrency(reporte.dineroDeclarado)],
+            // Solo mostrar uno de estos según corresponda
+            ...(haySobrante ? [['Sobrante:', formatCurrency(diferencia)]] : []),
+            ...(hayFaltante ? [['Faltante:', formatCurrency(Math.abs(diferencia))]] : []),
+            // Si no hay diferencia, mostrar que está cuadrado
+            ...(!haySobrante && !hayFaltante ? [['Estado:', 'Cuadrado']] : [])
+        ].forEach(([label, value]) => {
+            doc.text(label, { continued: true })
+               .text(value, { align: 'right' });
+        });
+        
+        // Firmas
+        doc.moveDown(2)
+           .text('_________________________', { align: 'center' })
+           .text('Firma del Cajero', { align: 'center' })
+           .moveDown()
+           .text('_________________________', { align: 'center' })
+           .text('Firma del Supervisor', { align: 'center' });
+        
+        // Fecha y hora de impresión
+        doc.moveDown()
+           .fontSize(8)
+           .text(`Impreso el: ${new Date().toLocaleString('es-HN')}`, { align: 'right' });
+        
+        doc.end();
+        
     } catch (error) {
-      console.error('Error en generarPDFCierreCaja backend:', {
-        mensaje: error.message,
-        error: error,
-        stack: error.stack
-      });
-      
-      res.status(500).json({
-        error: 'Error al generar el PDF',
-        details: error.message,
-        stack: error.stack
-      });
+        console.error('Error en generarPDFCierreCaja:', error);
+        res.status(500).json({
+            error: 'Error al generar el PDF',
+            details: error.message
+        });
     }
-  };
+};
+
+  // Nueva ruta para obtener totales de caja
+  const getTotalesCaja = async(req, res) => {
+    console.log('Iniciando getTotalesCaja...');
+    const supabase = req.supabase;
+    const id_usuario = req.params.id_usuario;
+    console.log('ID de usuario recibido:', id_usuario);
+    
+    try {
+        // Verificar existencia de caja
+        console.log('Verificando existencia de caja...');
+        const {resultado, caja} = await calculos.existeCaja(id_usuario, supabase);
+        console.log('Resultado existeCaja:', { resultado, caja });
+        
+        if(!resultado){
+            console.log('No se encontró caja abierta para el usuario');
+            return res.status(500).json({
+                respuesta: 'Este usuario no tiene una caja abierta.'
+            });
+        }
+
+        console.log('Caja encontrada con ID:', caja.id_caja);
+
+        // Obtener ventas
+        console.log('Consultando ventas de la caja actual...');
+        const { data: ventas, error } = await supabase
+        .from('Ventas')
+        .select(`
+            id_venta,
+            facturas (
+                tipo_factura,
+                total
+            )
+        `)
+        .eq('id_caja', caja.id_caja);
+
+        if(error) {
+            console.error('Error al consultar ventas:', error);
+            throw error;
+        }
+
+        console.log('Ventas encontradas:', ventas.length);
+        console.log('Detalle de ventas:', JSON.stringify(ventas, null, 2));
+
+        let totalEfectivo = 0;
+        let totalTransferencia = 0;
+
+        // Calcular totales
+        console.log('Calculando totales...');
+        ventas.forEach(venta => {
+            if (venta.facturas) {
+                venta.facturas.forEach(factura => {
+                    console.log('Procesando factura:', {
+                        tipo: factura.tipo_factura,
+                        total: factura.total
+                    });
+
+                    if (factura.tipo_factura === 'Efectivo') {
+                        totalEfectivo += factura.total;
+                        console.log('Sumando a efectivo:', factura.total, 'Total acumulado:', totalEfectivo);
+                    } else if (factura.tipo_factura === 'Transferencia') {
+                        totalTransferencia += factura.total;
+                        console.log('Sumando a transferencia:', factura.total, 'Total acumulado:', totalTransferencia);
+                    }
+                });
+            }
+        });
+
+        console.log('Totales finales:', {
+            totalEfectivo,
+            totalTransferencia
+        });
+
+        res.status(200).json({
+            totalEfectivo,
+            totalTransferencia
+        });
+
+        console.log('Respuesta enviada exitosamente');
+
+    } catch (error) {
+        console.error('Error en getTotalesCaja:', error);
+        console.error('Stack del error:', error.stack);
+        res.status(500).json({
+            error: error.message
+        });
+    }
+};
 
 
 module.exports = { 
@@ -1219,6 +1329,7 @@ module.exports = {
     cerrarCajaUsuario,
     generarFactura,
     generarPDFCierreCaja,
+    getTotalesCaja,
     
     ////promociones
     pruebaPromos

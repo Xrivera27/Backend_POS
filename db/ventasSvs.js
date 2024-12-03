@@ -545,82 +545,81 @@ const calculos = {
 
       async reporteCaja(caja, supabase){
         try {
-       const reporte = { 
-        fechaInicio: null,
-        fechaFinal: null,
-        totalEfectivo : 0,
-         totalTarjeta : 0,
-         totalIsv15 : 0,
-         totalIsv18 : 0,
-
-         totalGravado15: 0,
-         totalGravado18: 0,
-         totalExtento: 0,
-         total: 0,
-         cantidad_final: 0
-        }
-
+            const reporte = { 
+                fechaInicio: null,
+                fechaFinal: null,
+                totalEfectivo: 0,
+                totalTarjeta: 0,
+                totalIsv15: 0, 
+                totalIsv18: 0,
+                totalGravado15: 0,
+                totalGravado18: 0,
+                totalExtento: 0,
+                total: 0,
+                total_sistema: caja.valor_actual,
+                dineroDeclarado: caja.dinerocaja,
+                diferencia: 0
+            }
+     
             const { data: cierreCaja, error: cierreError } = await supabase.from('Ventas')
             .select(`
                 id_venta,
                 facturas(
-                id_factura,
-                created_at,
-                tipo_factura,
-                gravado_15,
-                gravado_18,
-                total_extento,
-                ISV_15,
-                ISV_18,
-                tipo_factura,
-                total
+                    id_factura,
+                    created_at,
+                    tipo_factura,
+                    gravado_15,
+                    gravado_18,
+                    total_extento,
+                    ISV_15,
+                    ISV_18,
+                    tipo_factura,
+                    total
                 )
-                `)
-               .eq('id_caja', caja.id_caja);
-
-                if(cierreError){
-                    throw cierreError;
-                }
-
-                if(cierreCaja && cierreCaja.length > 0){
-                    cierreCaja.forEach(cierre => {
-                        //console.log(cierre.fac)
-                        if(cierre.facturas[0].tipo_factura === 'Efectivo'){
-                            reporte.totalEfectivo += cierre.facturas[0].total;
-                        }
-
-                        if(cierre.facturas[0].tipo_factura === 'Transferencia'){
-                            reporte.totalTarjeta += cierre.facturas[0].total;
-                        }
-                        //Calculamos impuestos por productos
-                         reporte.totalGravado15 += cierre.facturas[0].gravado_15;
-                         reporte.totalGravado18 += cierre.facturas[0].gravado_18;
-                         reporte.totalExtento += cierre.facturas[0].total_extento;
-
-                         //calcular solo impuestos
-                         reporte.totalIsv15 += cierre.facturas[0].ISV_15;
-                         reporte.totalIsv18 += cierre.facturas[0].ISV_18;
-
-                         //calculamos total
-                         reporte.total += cierre.facturas[0].total;
-                    });
-
-                    reporte.cantidad_final = caja.valor_actual;
-                    reporte.fechaInicio = new Date(caja.created_at).toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' });
-                    reporte.fechaFinal = new Date(caja.closed_at).toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' });
-                }
-                else{
-                    throw 'No hay ventas para esta caja.'
-                }
-
+            `)
+            .eq('id_caja', caja.id_caja);
+     
+            if(cierreError){
+                throw cierreError;
+            }
+     
+            if(cierreCaja && cierreCaja.length > 0){
+                cierreCaja.forEach(cierre => {
+                    if(cierre.facturas[0].tipo_factura === 'Efectivo'){
+                        reporte.totalEfectivo += cierre.facturas[0].total;
+                    }
+     
+                    if(cierre.facturas[0].tipo_factura === 'Transferencia'){
+                        reporte.totalTarjeta += cierre.facturas[0].total;
+                    }
+                    
+                    reporte.totalGravado15 += cierre.facturas[0].gravado_15;
+                    reporte.totalGravado18 += cierre.facturas[0].gravado_18;
+                    reporte.totalExtento += cierre.facturas[0].total_extento;
+                    reporte.totalIsv15 += cierre.facturas[0].ISV_15;
+                    reporte.totalIsv18 += cierre.facturas[0].ISV_18;
+                    reporte.total += cierre.facturas[0].total;
+                });
+     
+                // Calcular la diferencia al final
+                reporte.diferencia = reporte.dineroDeclarado - reporte.total_sistema;
+                reporte.hasFaltante = reporte.diferencia < 0;
+                reporte.hasSobrante = reporte.diferencia > 0;
                 
-
-                return reporte;
+                reporte.fechaInicio = new Date(caja.created_at).toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' });
+                reporte.fechaFinal = new Date(caja.closed_at).toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' });
+            }
+            else{
+                throw 'No hay ventas para esta caja.';
+            }
+     
+            return reporte;
+     
         } catch (error) {
             console.error('Ocurrio un error al generar reporte de caja: ', error);
             throw error;
         }
-      }
+     }
 }
 
 module.exports = calculos;

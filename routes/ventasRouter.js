@@ -19,10 +19,15 @@ const { getPrePage,
     cerrarCajaUsuario,
     generarFactura,
     generarPDFCierreCaja,
+    getTotalesCaja,
+
+
     ///promos
 
     pruebaPromos
 } = require('../controllers/ventasController');
+
+const authMiddleware = require('../middlewares/loginMiddleware');
 
 
 // Ruta para obtener información del usuario logueado (requiere token)
@@ -37,7 +42,7 @@ router.post('/confirmar/:id_usuario', postVenta);
 router.post('/guardar-venta/:id_usuario', guardarVenta);
 router.post('/crear-caja', crearCajaUsuario);
 router.patch('/buscar-producto/:id_usuario', selectProductoCodigo);
-router.patch('/cerrar-caja', cerrarCajaUsuario);
+router.patch('/cerrar-caja/:id_usuario', cerrarCajaUsuario);
 router.patch('/eliminar-producto/:id_usuario', eliminarProductoVenta);
 router.patch('/pagar-efectivo', pagarFacturaEfectivo);
 router.patch('/pagar-transferencia', pagarFacturaTransferencia);
@@ -47,6 +52,7 @@ router.delete('/eliminar-venta/:id_venta/:id_factura', eliminarVenta);
 router.get('/factura/:id_venta/:id_usuario', generarFactura);
 
 router.post('/generar-pdf-cierre/:id_usuario', generarPDFCierreCaja);
+router.get('/totales-caja/:id_usuario',getTotalesCaja);
 
 
 

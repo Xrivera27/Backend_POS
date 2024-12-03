@@ -144,4 +144,147 @@ const getAlertasPorPromocionProducto = async (req, res) => {
     }
 };
 
-module.exports = { getVentasEmpresa, getAlertasPorPromocionProducto, getClientesEmpresa, getAlertasPromocion };
+const getVentasUltimosTresMeses = async (req, res) => {
+    const supabase = req.supabase;
+    const id_usuario = req.params.id_usuario;
+
+    try {
+        const id_empresa = await getEmpresaId(id_usuario, supabase);
+        
+        if (!id_empresa) {
+            return res.status(404).json({ error: 'Empresa no encontrada para el usuario especificado.' });
+        }
+
+        const { data: sucursales, error: errorSucursales } = await supabase
+            .from('Sucursales')
+            .select('id_sucursal')
+            .eq('id_empresa', id_empresa)
+            .eq('estado', true);
+
+        if (errorSucursales) {
+            return res.status(500).json({ error: 'Error al obtener sucursales: ' + errorSucursales.message });
+        }
+
+        const fechaActual = new Date();
+        const tresMesesAtras = new Date();
+        tresMesesAtras.setMonth(fechaActual.getMonth() - 2);
+        tresMesesAtras.setDate(1);
+        tresMesesAtras.setHours(0, 0, 0, 0);
+
+        // Obtener ventas pagadas
+        const { data: ventasPagadas, error: errorVentasPagadas } = await supabase
+            .from('Ventas')
+            .select('created_at')
+            .in('id_sucursal', sucursales.map(s => s.id_sucursal))
+            .eq('estado', 'Pagada')
+            .gte('created_at', tresMesesAtras.toISOString())
+            .lte('created_at', fechaActual.toISOString());
+
+        // Obtener ventas canceladas
+        const { data: ventasCanceladas, error: errorVentasCanceladas } = await supabase
+            .from('Ventas')
+            .select('created_at')
+            .in('id_sucursal', sucursales.map(s => s.id_sucursal))
+            .eq('estado', 'Cancelada')
+            .gte('created_at', tresMesesAtras.toISOString())
+            .lte('created_at', fechaActual.toISOString());
+
+        if (errorVentasPagadas || errorVentasCanceladas) {
+            return res.status(500).json({ error: 'Error al obtener ventas' });
+        }
+
+        const nombresMeses = [
+            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        ];
+
+        // Inicializar contadores para ambos tipos de ventas
+        const ventasPorMes = {};
+        for (let i = 2; i >= 0; i--) {
+            const fecha = new Date();
+            fecha.setMonth(fechaActual.getMonth() - i);
+            const mesKey = `${fecha.getFullYear()}-${(fecha.getMonth() + 1).toString().padStart(2, '0')}`;
+            ventasPorMes[mesKey] = {
+                nombre: nombresMeses[fecha.getMonth()],
+                cantidadPagadas: 0,
+                cantidadCanceladas: 0
+            };
+        }
+
+        // Contar ventas pagadas por mes
+        ventasPagadas?.forEach(venta => {
+            const fecha = new Date(venta.created_at);
+            const mesKey = `${fecha.getFullYear()}-${(fecha.getMonth() + 1).toString().padStart(2, '0')}`;
+            if (ventasPorMes[mesKey]) {
+                ventasPorMes[mesKey].cantidadPagadas++;
+            }
+        });
+
+        // Contar ventas canceladas por mes
+        ventasCanceladas?.forEach(venta => {
+            const fecha = new Date(venta.created_at);
+            const mesKey = `${fecha.getFullYear()}-${(fecha.getMonth() + 1).toString().padStart(2, '0')}`;
+            if (ventasPorMes[mesKey]) {
+                ventasPorMes[mesKey].cantidadCanceladas++;
+            }
+        });
+
+        const chartData = {
+            lineChartData: {
+                labels: Object.values(ventasPorMes).map(mes => mes.nombre),
+                datasets: [
+                    {
+                        label: 'Ventas Pagadas',
+                        borderColor: '#36A2EB',
+                        data: Object.values(ventasPorMes).map(mes => mes.cantidadPagadas),
+                        fill: false,
+                    },
+                    {
+                        label: 'Ventas Canceladas',
+                        borderColor: '#FF6384',
+                        data: Object.values(ventasPorMes).map(mes => mes.cantidadCanceladas),
+                        fill: false,
+                    }
+                ]
+            },
+            lineChartOptions: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || '';
+                                return `${label}: ${context.raw}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            callback: function(value) {
+                                return Math.floor(value);
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        res.status(200).json({
+            chartData,
+            resumenVentas: Object.values(ventasPorMes)
+        });
+
+    } catch (error) {
+        console.error('Error en el endpoint de ventas por mes:', error);
+        res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
+    }
+};
+
+module.exports = { getVentasEmpresa, getAlertasPorPromocionProducto, getClientesEmpresa, getAlertasPromocion, getVentasUltimosTresMeses };

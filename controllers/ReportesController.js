@@ -320,7 +320,7 @@ const getUsuarioOfSucursal = async (req, res) => {
     .eq('estado', true)
     .in('id_usuario', ids.map(i => i.id_usuario));
 
-    const usuariosFiltro = usuarios.filter(u => u.id_rol !== 4 && u.id_rol !== 2 && u.id_usuario !== Number(id_usuario) );
+    const usuariosFiltro = usuarios.filter(u => u.id_rol === 3 && u.id_usuario !== Number(id_usuario) );
 
     if(usuariosFiltro && usuariosFiltro.length > 0){
       usuariosFiltro.forEach(element => {
@@ -395,7 +395,7 @@ const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
         if(error){
           throw error;
         }
-        registro[0].id_usuario = i.id_usuario;
+        registro[0].id = i.id_usuario;
         registro[0].nombre = `${i.nombre} ${i.apellido}`
         datosReporte.push(registro[0])
       });

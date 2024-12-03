@@ -1,4 +1,5 @@
 const { existeRelacion, getIdUsersBySucursal, getSucursalesbyUser } = require('../db/sucursalUsuarioSvc.js');
+const { getRolByUsuario } = require('../db/validaciones.js');
 
 const reporteVentasController = {
   async getReporteVentas(req, res) {
@@ -338,4 +339,52 @@ const getUsuarioOfSucursal = async (req, res) => {
   }
 }
 
-module.exports = {reporteVentasController, getProductosOfInventorySucursal, getUsuarioOfSucursal};
+const getCajerosReportes = async (req, res) => {
+  const id_usuario = req.params.id_usuario;
+  //const fecha_inicio = req.params.fecha_inicio;
+  //const fecha_final = req.params.fecha_final;
+  const supabase = req.supabase;
+  let datosReporte = [];
+  
+  try {
+
+    const id_rol = await getRolByUsuario(id_usuario, supabase);
+
+    if(id_rol === 4){
+      return res.status(200).json({
+        message: 'Es un ceo'
+      })
+    }
+
+    const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+    
+    const { ids: idUsersS , resultado: resultadoUsers } = await getIdUsersBySucursal(id_sucursal, supabase);
+
+    if (!resultadoUsers){
+      throw 'Error al recuperar IDs de usuarios al intentar recuperar reporte por empleados';
+    }
+
+    const promesas = 
+      idUsersS.map(async (i) => {
+        const {data: registro, error} = await supabase.rpc('obtener_reportes_por_usuario', {p_id_usuario: i.id_usuario})
+        if(error){
+          throw error;
+        }
+        registro[0].id_usuario = i.id_usuario;
+        datosReporte.push(registro[0])
+      });
+
+      await Promise.all(promesas);
+
+    res.status(200).json(datosReporte);
+
+  } catch (error) {
+    console.error('Ocurrio un error: ', error);
+    res.status(500).json({
+      message: 'Ocurrio un error en el servidor. Intente de nuevo'
+    })
+  }
+  
+}
+
+module.exports = {getCajerosReportes, reporteVentasController, getProductosOfInventorySucursal, getUsuarioOfSucursal};

@@ -1,7 +1,7 @@
 // routes/reporteVentas.routes.js
 const express = require('express');
 const router = express.Router();
-const {reporteVentasController, getProductosOfInventorySucursal, getUsuarioOfSucursal }= require('../controllers/ReportesController');
+const {getCajerosReportes, reporteVentasController, getProductosOfInventorySucursal, getUsuarioOfSucursal }= require('../controllers/ReportesController');
 const authMiddleware = require('../middlewares/loginMiddleware');
 
 router.get('/reporte', authMiddleware, reporteVentasController.getReporteVentas);
@@ -10,5 +10,8 @@ router.get('/empleados/:id_usuario', getUsuarioOfSucursal);
 router.get('/clientes', authMiddleware, reporteVentasController.getClientes);
 router.get('/sucursales', authMiddleware, reporteVentasController.getSucursales);
 router.get('/empleados', authMiddleware, reporteVentasController.getEmpleados);
+
+//reportes
+router.get('/reporte-empleados/:id_usuario', getCajerosReportes);
 
 module.exports = router;

@@ -1,20 +1,20 @@
 const jwt = require('jsonwebtoken');
 
 const authMiddleware = (req, res, next) => {
-  console.log('Middleware de autenticación iniciado');
+  //console.log('Middleware de autenticación iniciado');
   const authHeader = req.headers['authorization'];
-  console.log('Header de autorización:', authHeader);
+  //console.log('Header de autorización:', authHeader);
   const token = authHeader && authHeader.split(' ')[1];
   
   if (!token) {
-    console.log('No se proporcionó token');
+    //console.log('No se proporcionó token');
     return res.status(403).json({ message: 'Token no proporcionado' });
   }
 
   try {
     console.log('Intentando verificar token');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Token verificado exitosamente:', decoded);
+    //console.log('Token verificado exitosamente:', decoded);
     req.user = decoded;
     next();
   } catch (err) {

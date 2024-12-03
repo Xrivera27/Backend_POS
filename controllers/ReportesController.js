@@ -553,4 +553,116 @@ const getEmpleadoReporteDesglose = async (req, res) => {
   }
 }
 
-module.exports = {getCajerosReportes, getClientesReportes, getSucursalesReportes, reporteVentasController, getProductosOfInventorySucursal, getUsuarioOfSucursal, getEmpleadoReporteDesglose};
+const getClientesReportesDesglose = async (req, res) => {
+  const id_cliente = req.params.id_cliente;
+  const fechaInicio = req.params.fechaInicio;
+  const fechaFin = req.params.fechaFin;
+  const supabase = req.supabase;
+  const datosFactura = [];
+  let numFactura = 0;
+  try {
+  const inicioTimestampZ = new Date(fechaInicio + 'T00:00:00+00:00').toISOString();
+  const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
+    const { data: facturas, error } = await supabase.from('Ventas')
+    .select('id_usuario, facturas(*, factura_SAR(*))')
+    .lte('created_at', finTimestampZ)
+    .gte('created_at', inicioTimestampZ)
+    .eq('id_cliente', id_cliente);
+
+    if (!facturas || facturas.length === 0) {
+      return res.status(200).json([]); // Retorna una respuesta vacía si no hay facturas
+    }
+
+    if(error){
+      console.log(error);
+      throw 'Ocurrio un error al obtener registros de productos';
+    }
+
+  facturas.forEach(f => {
+
+    if(f.facturas[0]){
+      if (f.facturas[0].factura_SAR.length > 0) {
+        numFactura = f.facturas[0].factura_SAR[0].numero_factura_SAR;
+     } else {
+        numFactura = f.facturas[0].codigo_factura;
+     }
+      
+      datosFactura.push({
+        nombre: numFactura,
+        valor_exento: f.facturas[0].total_extento,
+        gravado_15: f.facturas[0].gravado_15,
+        gravado_18: f.facturas[0].gravado_18,
+        total_isv: f.facturas[0].total_ISV,
+        total: f.facturas[0].total
+      });
+    }
+  });
+
+    res.status(200).json(datosFactura);
+
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: error
+    })
+  }
+}
+
+const getSucursalReportesDesglose = async (req, res) => {
+  const id_sucursal = req.params.id_sucursal;
+  const fechaInicio = req.params.fechaInicio;
+  const fechaFin = req.params.fechaFin;
+  const supabase = req.supabase;
+  const datosFactura = [];
+  let numFactura = 0;
+  try {
+  const inicioTimestampZ = new Date(fechaInicio + 'T00:00:00+00:00').toISOString();
+  const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
+    const { data: facturas, error } = await supabase.from('Ventas')
+    .select('id_usuario, facturas(*, factura_SAR(*))')
+    .lte('created_at', finTimestampZ)
+    .gte('created_at', inicioTimestampZ)
+    .eq('id_sucursal', id_sucursal);
+
+    if (!facturas || facturas.length === 0) {
+      return res.status(200).json([]); // Retorna una respuesta vacía si no hay facturas
+    }
+
+    if(error){
+      console.log(error);
+      throw 'Ocurrio un error al obtener registros de productos';
+    }
+
+  facturas.forEach(f => {
+
+    if(f.facturas[0]){
+      if (f.facturas[0].factura_SAR.length > 0) {
+        numFactura = f.facturas[0].factura_SAR[0].numero_factura_SAR;
+     } else {
+        numFactura = f.facturas[0].codigo_factura;
+     }
+      
+      datosFactura.push({
+        nombre: numFactura,
+        valor_exento: f.facturas[0].total_extento,
+        gravado_15: f.facturas[0].gravado_15,
+        gravado_18: f.facturas[0].gravado_18,
+        total_isv: f.facturas[0].total_ISV,
+        total: f.facturas[0].total
+      });
+    }
+  });
+
+    res.status(200).json(datosFactura);
+
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: error
+    })
+  }
+}
+
+module.exports = {getCajerosReportes, getClientesReportes, getSucursalesReportes, reporteVentasController, getProductosOfInventorySucursal, getUsuarioOfSucursal, getEmpleadoReporteDesglose, getClientesReportesDesglose, getSucursalReportesDesglose};

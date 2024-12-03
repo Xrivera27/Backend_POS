@@ -1,5 +1,6 @@
 // Controlador para registrar una empresa
 const nodemailer = require('nodemailer');
+const {getEmpresaId} = require('../db/empresaSvc.js');
 const register = async (req, res) => {
   const {
     nombre,
@@ -95,6 +96,32 @@ const register = async (req, res) => {
   }
 };
 
+const getDatosEmpresa = async(req, res) => {
+  const supabase = req.supabase;
+  const id_usuario = req.params.id_usuario
+  try {
+    const id_empresa = await getEmpresaId(id_usuario, supabase);
+
+    const { data: empresa, error } = await supabase.from('Empresas')
+    .select('nombre, correo_principal, telefono_principal')
+    .eq('id_empresa', id_empresa)
+    .single();
+
+    if(error){
+      console.error("Fallo interno en el servidor. ", error);
+      throw 'Ocurrio un error al intentar obtener datos de la empresa.';
+    }
+
+    res.status(200).json(empresa);
+
+  } catch (error) {
+    res.status(500).json({
+      message: 'Error inesperado.'
+    })
+  }
+}
+
 module.exports = {
   register,
+  getDatosEmpresa
 }

@@ -50,6 +50,48 @@ const getIdUsersBySucursal = async (id_sucursal, supabase) => {
     }
 }
 
+const getIdCajeroBySucursal = async (id_sucursal, supabase) => {
+    try {
+        const { data: ids, error } = await supabase.from('sucursales_usuarios')
+        .select('id_usuario, Usuarios(id_usuario, id_rol, nombre, apellido, estado)')
+        .eq('Usuarios.id_rol', 3)
+        .eq('Usuarios.estado', true)
+        .eq('id_sucursal', id_sucursal);
+
+        if(ids.length < 1 ){
+            return;
+        }
+
+        const newIds = ids.filter(u => u.Usuarios !== null);
+        const idsFixed = [];
+
+        newIds.forEach(i => {
+            idsFixed.push({
+                id_usuario: i.id_usuario,
+                nombre: i.Usuarios.nombre,
+                apellido: i.Usuarios.apellido
+            });
+        });
+        
+
+        if (error){
+            throw error;
+        }
+
+        return {
+            resultado: true,
+            ids: idsFixed
+        }
+
+    } catch (error) {
+        console.error('Ha ocurrido un error: ', error);
+        return {
+            resultado: false,
+            ids: []
+        }
+    }
+}
+
 const existeRelacion = async (id_usuario, id_sucursal, supabase) => {
 try {
     const { data, error } = await supabase.from('sucursales_usuarios')
@@ -153,4 +195,4 @@ const deleteRelacion = async (id, supabase) => {
     }
 }
 
-module.exports = { existeRelacion, insertarRelacion, getSucursalesbyUser, getIdUsersBySucursal, getDatosSarSucursal }
+module.exports = { existeRelacion, insertarRelacion, getSucursalesbyUser, getIdUsersBySucursal, getIdCajeroBySucursal, getDatosSarSucursal }

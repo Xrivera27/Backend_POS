@@ -1,4 +1,6 @@
-const { getSucursalesbyUser } = require('../db/sucursalUsuarioSvc');
+const { existeRelacion, getIdUsersBySucursal, getSucursalesbyUser, getIdCajeroBySucursal } = require('../db/sucursalUsuarioSvc.js');
+const { getRolByUsuario } = require('../db/validaciones.js');
+const { getEmpresaId } = require('../db/empresaSvc.js')
 
 const reporteVentasController = {
   async getReporteVentas(req, res) {
@@ -266,4 +268,401 @@ const reporteVentasController = {
   }
 };
 
-module.exports = reporteVentasController;
+const getProductosOfInventorySucursal = async (req, res) => {
+  const supabase = req.supabase;
+  const id_usuario = req.params.id_usuario;
+ 
+
+  try {
+    const id_sucursal_param = await getSucursalesbyUser(id_usuario, supabase);
+      const {data: productos, error} = await supabase.rpc('view_inventory_only_sucursal', {id_sucursal_param})
+      .select('*');
+
+      if (error){
+          throw 'Ocurrio un error al obtener productos.'
+      }
+
+      res.status(200).json(productos);
+
+  } catch (error) {
+      console.log(error);
+      res.status(500).json(error);
+  }
+}
+
+const getUsuarioOfSucursal = async (req, res) => {
+  try {
+    const supabase = req.supabase;
+
+    const id_usuario = req.params.id_usuario;
+    const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+
+    const promesas = [
+      existeRelacion(id_usuario, id_sucursal, supabase),
+      getIdUsersBySucursal(id_sucursal, supabase)
+    ];
+
+    const promesasResultados = await Promise.all(promesas);
+
+    const { resultado: resultRelacion } = promesasResultados[0];
+    const { resultado: resultIds, ids } = promesasResultados[1];
+
+    if(!resultRelacion){
+      throw 'Este usuario no pertenece a la sucursal especificada';
+    }
+
+    if(!resultIds){
+      throw 'Error al seleccionar usuarios de la sucursal';
+    }
+
+    const { data: usuarios, error } = await supabase.from('Usuarios')
+    .select('id_usuario, id_rol, nombre, apellido, nombre_usuario, correo, telefono, direccion, estado')
+    .eq('estado', true)
+    .in('id_usuario', ids.map(i => i.id_usuario));
+
+    const usuariosFiltro = usuarios.filter(u => u.id_rol === 3 && u.id_usuario !== Number(id_usuario) );
+
+    if(usuariosFiltro && usuariosFiltro.length > 0){
+      usuariosFiltro.forEach(element => {
+      element.sucursales = id_sucursal;
+      });
+    }
+
+    if(error){
+      throw error;
+    }
+
+    res.status(200).json(usuariosFiltro);
+    
+  } catch (error) {
+    console.error('Ocurrio un error: ', error);
+    res.status(500).json({error: 'Fallo interno del servidor'});
+  }
+}
+
+const getCajerosReportes = async (req, res) => {
+  const id_usuario = req.params.id_usuario;
+  const fechaInicio = req.params.fechaInicio;
+  const fechaFin = req.params.fechaFin;
+  const supabase = req.supabase;
+  let idsUsar = [];
+  let datosReporte = [];
+  
+  try {
+
+const inicioTimestampZ = new Date(fechaInicio + 'T00:00:00+00:00').toISOString();
+const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
+
+    const id_rol = await getRolByUsuario(id_usuario, supabase);
+
+    if(id_rol === 4){
+      const id_empresa_param = await getEmpresaId(id_usuario, supabase);
+      const { data: usuarios, error: errorUsuario } = await supabase.rpc('get_usuariosbyidusuario', { id_empresa_param });
+     
+     if( !usuarios || usuarios.length === 0){
+      return res.status(200).json({
+        message: 'No hay cajeros'
+      });
+     }
+
+     const usuarioFilter = usuarios.filter(u => u.estado === true && u.id_rol === 3  )
+
+     if (errorUsuario){
+      throw 'Error al recuperar IDs de usuarios al intentar recuperar reporte por empleados de ceo';
+    }
+
+    idsUsar = usuarioFilter;
+
+    }
+    else{
+      const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+
+      const { ids: idsCajeros , resultado: resultadoCajeros } = await getIdCajeroBySucursal(id_sucursal, supabase);
+
+      if (!resultadoCajeros){
+        throw 'Error al recuperar IDs de usuarios al intentar recuperar reporte por empleados';
+      }
+
+      idsUsar = idsCajeros;
+    }
+
+
+    const promesas = 
+    idsUsar.map(async (i) => {
+        const {data: registro, error} = await supabase.rpc('obtener_reportes_por_usuario_fecha', 
+          {p_id_usuario: i.id_usuario, p_fecha_inicio: inicioTimestampZ, p_fecha_fin: finTimestampZ})
+        if(error){
+          throw error;
+        }
+        registro[0].id = i.id_usuario;
+        registro[0].nombre = `${i.nombre} ${i.apellido}`
+        datosReporte.push(registro[0])
+      });
+
+      await Promise.all(promesas);
+      console.log(datosReporte);
+
+    res.status(200).json(datosReporte.filter(d => d.total !== 0));
+
+  } catch (error) {
+    console.error('Ocurrio un error: ', error);
+    res.status(500).json({
+      message: 'Ocurrio un error en el servidor. Intente de nuevo'
+    })
+  }
+  
+}
+
+const getClientesReportes = async (req, res) => {
+  const id_usuario = req.params.id_usuario;
+  const fechaInicio = req.params.fechaInicio;
+  const fechaFin = req.params.fechaFin;
+  const supabase = req.supabase;
+
+  let datosReporte = [];
+  
+  try {
+
+const inicioTimestampZ = new Date(fechaInicio + 'T00:00:00+00:00').toISOString();
+const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
+
+    const id_rol = await getRolByUsuario(id_usuario, supabase);
+
+    if(id_rol === 4){
+
+      const id_empresa_param = await getEmpresaId(id_usuario, supabase);
+      const {data: registros, error} = await supabase.rpc('obtener_reportes_por_clientes_empresa', 
+        {p_id_empresa: id_empresa_param, p_fecha_inicio: inicioTimestampZ, p_fecha_fin: finTimestampZ})
+      if(error){
+        throw error;
+      }
+
+      datosReporte = registros;
+
+    }
+    else{
+      const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+
+ 
+      const {data: registros, error} = await supabase.rpc('obtener_reportes_por_clientes_sucursal', 
+            {p_id_sucursal: id_sucursal, p_fecha_inicio: inicioTimestampZ, p_fecha_fin: finTimestampZ})
+          if(error){
+            throw error;
+          }
+
+          datosReporte = registros;
+
+    }
+
+    res.status(200).json(datosReporte.filter(d => d.total !== 0));
+
+  } catch (error) {
+    console.error('Ocurrio un error: ', error);
+    res.status(500).json({
+      message: 'Ocurrio un error en el servidor. Intente de nuevo'
+    })
+  }
+  
+}
+
+const getSucursalesReportes = async (req, res) => {
+  const id_usuario = req.params.id_usuario;
+  const fechaInicio = req.params.fechaInicio;
+  const fechaFin = req.params.fechaFin;
+  const supabase = req.supabase;
+  let datosReporte = [];
+  
+  try {
+
+const inicioTimestampZ = new Date(fechaInicio + 'T00:00:00+00:00').toISOString();
+const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
+
+      const id_empresa_param = await getEmpresaId(id_usuario, supabase);
+      const {data: registros, error} = await supabase.rpc('obtener_reportes_por_sucursales_admin', 
+        {p_id_empresa: id_empresa_param, p_fecha_inicio: inicioTimestampZ, p_fecha_fin: finTimestampZ})
+      if(error){
+        throw error;
+      }
+
+      datosReporte = registros;
+
+    res.status(200).json(datosReporte);
+
+  } catch (error) {
+    console.error('Ocurrio un error: ', error);
+    res.status(500).json({
+      message: 'Ocurrio un error en el servidor. Intente de nuevo'
+    })
+  }
+  
+}
+
+const getEmpleadoReporteDesglose = async (req, res) => {
+  const id_empleado = req.params.id_empleado;
+  const fechaInicio = req.params.fechaInicio;
+  const fechaFin = req.params.fechaFin;
+  const supabase = req.supabase;
+  const datosFactura = [];
+  let numFactura = 0;
+  try {
+  const inicioTimestampZ = new Date(fechaInicio + 'T00:00:00+00:00').toISOString();
+  const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
+    const { data: facturas, error } = await supabase.from('Ventas')
+    .select('id_usuario, facturas(*, factura_SAR(*))')
+    .lte('created_at', finTimestampZ)
+    .gte('created_at', inicioTimestampZ)
+    .eq('id_usuario', id_empleado);
+
+    if (!facturas || facturas.length === 0) {
+      return res.status(200).json([]); // Retorna una respuesta vacía si no hay facturas
+    }
+
+    if(error){
+      console.log(error);
+      throw 'Ocurrio un error al obtener registros de productos';
+    }
+
+  facturas.forEach(f => {
+
+    if(f.facturas[0]){
+      if (f.facturas[0].factura_SAR.length > 0) {
+        numFactura = f.facturas[0].factura_SAR[0].numero_factura_SAR;
+     } else {
+        numFactura = f.facturas[0].codigo_factura;
+     }
+      
+      datosFactura.push({
+        nombre: numFactura,
+        valor_exento: f.facturas[0].total_extento,
+        gravado_15: f.facturas[0].gravado_15,
+        gravado_18: f.facturas[0].gravado_18,
+        total_isv: f.facturas[0].total_ISV,
+        total: f.facturas[0].total
+      });
+    }
+  });
+
+    res.status(200).json(datosFactura);
+
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: error
+    })
+  }
+}
+
+const getClientesReportesDesglose = async (req, res) => {
+  const id_cliente = req.params.id_cliente;
+  const fechaInicio = req.params.fechaInicio;
+  const fechaFin = req.params.fechaFin;
+  const supabase = req.supabase;
+  const datosFactura = [];
+  let numFactura = 0;
+  try {
+  const inicioTimestampZ = new Date(fechaInicio + 'T00:00:00+00:00').toISOString();
+  const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
+    const { data: facturas, error } = await supabase.from('Ventas')
+    .select('id_usuario, facturas(*, factura_SAR(*))')
+    .lte('created_at', finTimestampZ)
+    .gte('created_at', inicioTimestampZ)
+    .eq('id_cliente', id_cliente);
+
+    if (!facturas || facturas.length === 0) {
+      return res.status(200).json([]); // Retorna una respuesta vacía si no hay facturas
+    }
+
+    if(error){
+      console.log(error);
+      throw 'Ocurrio un error al obtener registros de productos';
+    }
+
+  facturas.forEach(f => {
+
+    if(f.facturas[0]){
+      if (f.facturas[0].factura_SAR.length > 0) {
+        numFactura = f.facturas[0].factura_SAR[0].numero_factura_SAR;
+     } else {
+        numFactura = f.facturas[0].codigo_factura;
+     }
+      
+      datosFactura.push({
+        nombre: numFactura,
+        valor_exento: f.facturas[0].total_extento,
+        gravado_15: f.facturas[0].gravado_15,
+        gravado_18: f.facturas[0].gravado_18,
+        total_isv: f.facturas[0].total_ISV,
+        total: f.facturas[0].total
+      });
+    }
+  });
+
+    res.status(200).json(datosFactura);
+
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: error
+    })
+  }
+}
+
+const getSucursalReportesDesglose = async (req, res) => {
+  const id_sucursal = req.params.id_sucursal;
+  const fechaInicio = req.params.fechaInicio;
+  const fechaFin = req.params.fechaFin;
+  const supabase = req.supabase;
+  const datosFactura = [];
+  let numFactura = 0;
+  try {
+  const inicioTimestampZ = new Date(fechaInicio + 'T00:00:00+00:00').toISOString();
+  const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
+    const { data: facturas, error } = await supabase.from('Ventas')
+    .select('id_usuario, facturas(*, factura_SAR(*))')
+    .lte('created_at', finTimestampZ)
+    .gte('created_at', inicioTimestampZ)
+    .eq('id_sucursal', id_sucursal);
+
+    if (!facturas || facturas.length === 0) {
+      return res.status(200).json([]); // Retorna una respuesta vacía si no hay facturas
+    }
+
+    if(error){
+      console.log(error);
+      throw 'Ocurrio un error al obtener registros de productos';
+    }
+
+  facturas.forEach(f => {
+
+    if(f.facturas[0]){
+      if (f.facturas[0].factura_SAR.length > 0) {
+        numFactura = f.facturas[0].factura_SAR[0].numero_factura_SAR;
+     } else {
+        numFactura = f.facturas[0].codigo_factura;
+     }
+      
+      datosFactura.push({
+        nombre: numFactura,
+        valor_exento: f.facturas[0].total_extento,
+        gravado_15: f.facturas[0].gravado_15,
+        gravado_18: f.facturas[0].gravado_18,
+        total_isv: f.facturas[0].total_ISV,
+        total: f.facturas[0].total
+      });
+    }
+  });
+
+    res.status(200).json(datosFactura);
+
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: error
+    })
+  }
+}
+
+module.exports = {getCajerosReportes, getClientesReportes, getSucursalesReportes, reporteVentasController, getProductosOfInventorySucursal, getUsuarioOfSucursal, getEmpleadoReporteDesglose, getClientesReportesDesglose, getSucursalReportesDesglose};

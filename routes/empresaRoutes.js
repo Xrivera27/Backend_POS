@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const registerController = require('../controllers/empresaController'); // Importar el controlador
+const {register, getDatosEmpresa} = require('../controllers/empresaController'); // Importar el controlador
 
 // Ruta POST para registrar una empresa
-router.post('/', registerController.register);
+router.post('/', register);
+router.get('/obtener-datos/:id_usuario', getDatosEmpresa);
 
 module.exports = router;

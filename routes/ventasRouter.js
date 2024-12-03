@@ -18,6 +18,7 @@ const { getPrePage,
     crearCajaUsuario,
     cerrarCajaUsuario,
     generarFactura,
+    generarPDFCierreCaja,
     ///promos
 
     pruebaPromos
@@ -44,6 +45,9 @@ router.delete('/eliminar-venta/:id_venta/:id_factura', eliminarVenta);
 
 // Añadir esta línea junto con las otras rutas
 router.get('/factura/:id_venta/:id_usuario', generarFactura);
+
+router.post('/generar-pdf-cierre/:id_usuario', generarPDFCierreCaja);
+
 
 
 ///promos

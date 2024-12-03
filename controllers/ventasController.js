@@ -1117,6 +1117,87 @@ const recuperarVentaGuardada = async (req, res) => {
     }
 };
 
+const generarPDFCierreCaja = async (req, res) => {
+    console.log('Iniciando generación de PDF en el backend...');
+    try {
+      const reporte = req.body;
+      console.log('Reporte recibido:', reporte);
+      
+      const doc = new PDFDocument();
+      
+      // Configurar headers
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename=cierre_caja.pdf');
+      
+      doc.pipe(res);
+      
+      // Contenido del PDF
+      doc.font('Helvetica-Bold')
+         .fontSize(20)
+         .text('Reporte de Cierre de Caja', { align: 'center' })
+         .moveDown();
+      
+      console.log('Agregando información básica...');
+      doc.fontSize(12)
+         .text(`Fecha de Apertura: ${reporte.fechaInicio}`)
+         .text(`Fecha de Cierre: ${reporte.fechaFinal}`)
+         .moveDown();
+      
+      doc.font('Helvetica-Bold').text('Resumen de Ventas:').font('Helvetica');
+      
+      // Función helper para formatear moneda
+      const formatCurrency = (amount) => {
+        console.log('Formateando cantidad:', amount);
+        return `L. ${Number(amount).toFixed(2)}`;
+      };
+      
+      console.log('Agregando detalles del reporte...');
+      const detalles = [
+        { label: 'Total Efectivo:', value: formatCurrency(reporte.totalEfectivo) },
+        { label: 'Total Tarjeta:', value: formatCurrency(reporte.totalTarjeta) },
+        { label: 'Total ISV 15%:', value: formatCurrency(reporte.totalIsv15) },
+        { label: 'Total ISV 18%:', value: formatCurrency(reporte.totalIsv18) },
+        { label: 'Total Gravado 15%:', value: formatCurrency(reporte.totalGravado15) },
+        { label: 'Total Gravado 18%:', value: formatCurrency(reporte.totalGravado18) },
+        { label: 'Total Exento:', value: formatCurrency(reporte.totalExtento) },
+      ];
+      
+      console.log('Detalles a escribir:', detalles);
+      
+      detalles.forEach(item => {
+        console.log('Escribiendo detalle:', item);
+        doc.text(`${item.label} ${item.value}`);
+      });
+      
+      console.log('Agregando total final...');
+      doc.moveDown()
+         .font('Helvetica-Bold')
+         .text('Total Final:', { continued: true })
+         .text(formatCurrency(reporte.total), { align: 'right' });
+      
+      console.log('Agregando espacio para firmas...');
+      doc.moveDown(2)
+         .text('_______________________', { align: 'center' })
+         .text('Firma del Cajero', { align: 'center' });
+      
+      console.log('Finalizando documento PDF...');
+      doc.end();
+      
+      console.log('PDF generado exitosamente');
+    } catch (error) {
+      console.error('Error en generarPDFCierreCaja backend:', {
+        mensaje: error.message,
+        error: error,
+        stack: error.stack
+      });
+      
+      res.status(500).json({
+        error: 'Error al generar el PDF',
+        details: error.message,
+        stack: error.stack
+      });
+    }
+  };
 
 
 module.exports = { 
@@ -1137,6 +1218,7 @@ module.exports = {
     cajaAbiertaUsuario,
     cerrarCajaUsuario,
     generarFactura,
+    generarPDFCierreCaja,
     
     ////promociones
     pruebaPromos

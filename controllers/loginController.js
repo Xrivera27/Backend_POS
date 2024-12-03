@@ -1,9 +1,8 @@
-const jwt = require('jsonwebtoken'); // Para generar tokens JWT
+const jwt = require('jsonwebtoken');
 
-// Controlador de login
 exports.login = async (req, res) => {
-  const { username, password } = req.body; // Extrae el nombre de usuario y la contraseña del cuerpo de la solicitud
-  const supabase = req.supabase; // Obtenemos Supabase desde req
+  const { username, password } = req.body;
+  const supabase = req.supabase;
 
   try {
     // Verifica si el usuario existe en la base de datos
@@ -18,6 +17,11 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Usuario no encontrado' });
     }
 
+    // Verifica el estado del usuario
+    if (!user.estado) {
+      return res.status(403).json({ message: 'Usuario inhabilitado' });
+    }
+
     // Verifica si la contraseña ingresada es correcta (en texto plano)
     if (password !== user.contraseña) {
       return res.status(401).json({ message: 'Contraseña incorrecta' });
@@ -25,9 +29,12 @@ exports.login = async (req, res) => {
 
     // Genera un token JWT
     const token = jwt.sign(
-      { id_usuario: user.id_usuario, id_rol: user.id_rol, username: user.nombre_usuario }, 
-      process.env.JWT_SECRET, // Asegúrate de tener una variable de entorno JWT_SECRET
-    
+      { 
+        id_usuario: user.id_usuario, 
+        id_rol: user.id_rol, 
+        username: user.nombre_usuario 
+      }, 
+      process.env.JWT_SECRET,
     );
 
     // Envía el token y el rol como respuesta
@@ -38,6 +45,9 @@ exports.login = async (req, res) => {
     });
   } catch (err) {
     // Manejo de errores del servidor
-    return res.status(500).json({ message: 'Error interno del servidor', error: err.message });
+    return res.status(500).json({ 
+      message: 'Error interno del servidor', 
+      error: err.message 
+    });
   }
 };

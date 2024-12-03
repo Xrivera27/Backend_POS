@@ -224,7 +224,8 @@ const desactivarProducto = async (req, res) => {
     try {
         const {data, error } = await supabase.from('producto')
         .update({
-            estado: estado
+            estado: estado,
+            id_unidad_medida: null
         }).eq('id_producto', id_producto);
 
         if (error){

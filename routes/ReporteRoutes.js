@@ -12,6 +12,6 @@ router.get('/sucursales', authMiddleware, reporteVentasController.getSucursales)
 router.get('/empleados', authMiddleware, reporteVentasController.getEmpleados);
 
 //reportes
-router.get('/reporte-empleados/:id_usuario', getCajerosReportes);
+router.get('/reporte-empleados/:id_usuario/:fechaInicio/:fechaFin', getCajerosReportes);
 
 module.exports = router;

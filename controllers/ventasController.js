@@ -668,7 +668,7 @@ const recuperarVentaGuardada = async (req, res) => {
         .update({
             pago: pago,
             cambio: pago - totalFactura,
-            tipo_factura: "Tranferencia",
+            tipo_factura: "Transferencia",
         }).select('cambio')
         .eq('id_venta', id_venta),
 

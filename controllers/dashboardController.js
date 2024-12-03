@@ -50,25 +50,6 @@ const getVentasEmpresa = async (req, res) => {
     }
 };
 
-const getComprasPendientes = async (req, res) => {
-    const supabase = req.supabase;
-    try {
-        const { data: comprasPendientes, error } = await supabase
-        .from('compras')
-        .select('*')
-        .eq('estado', 'pendiente');
-
-        if (error) {
-            return res.status(500).json({ error: 'Error al obtener compras pendientes: ' + error.message });
-        }
-
-        res.status(200).json(comprasPendientes);
-    } catch (error) {
-        console.error('Error en el endpoint de compras pendientes:', error);
-        res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
-    }
-};
-
 const getClientesEmpresa = async (req, res) => {
     const supabase = req.supabase;
     const id_usuario = req.params.id_usuario;
@@ -130,4 +111,37 @@ const getAlertasPromocion = async (req, res) => {
     }
 };
 
-module.exports = { getVentasEmpresa, getComprasPendientes, getClientesEmpresa, getAlertasPromocion };
+const getAlertasPorPromocionProducto = async (req, res) => {
+    const supabase = req.supabase;
+    const id_usuario = req.params.id_usuario;
+
+    if (!id_usuario) {
+        return res.status(400).json({ error: 'ID de usuario no proporcionado.' });
+    }
+
+    try {
+        const id_empresa = await getEmpresaId(id_usuario, supabase);
+
+        if (!id_empresa) {
+            return res.status(404).json({ error: 'Empresa no encontrada para el usuario especificado.' });
+        }
+
+        const { data: alertasProducto, count, error } = await supabase
+            .from('alerts')
+            .select('*', { count: 'exact' })
+            .eq('id_empresa', id_empresa)
+            .eq('tipo', 'promocion_producto_entrante');
+
+        if (error) {
+            console.error('Supabase error:', error);
+            return res.status(500).json({ error: 'Error al obtener alertas de promoción de producto: ' + error.message });
+        }
+
+        res.status(200).json({ totalAlertasProducto: count, alertasProducto });
+    } catch (error) {
+        console.error('Error en el endpoint de alertas de promoción de producto:', error);
+        res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
+    }
+};
+
+module.exports = { getVentasEmpresa, getAlertasPorPromocionProducto, getClientesEmpresa, getAlertasPromocion };

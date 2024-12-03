@@ -465,4 +465,36 @@ const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
   
 }
 
-module.exports = {getCajerosReportes, getClientesReportes, reporteVentasController, getProductosOfInventorySucursal, getUsuarioOfSucursal};
+const getSucursalesReportes = async (req, res) => {
+  const id_usuario = req.params.id_usuario;
+  const fechaInicio = req.params.fechaInicio;
+  const fechaFin = req.params.fechaFin;
+  const supabase = req.supabase;
+  let datosReporte = [];
+  
+  try {
+
+const inicioTimestampZ = new Date(fechaInicio + 'T00:00:00+00:00').toISOString();
+const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
+
+      const id_empresa_param = await getEmpresaId(id_usuario, supabase);
+      const {data: registros, error} = await supabase.rpc('obtener_reportes_por_sucursales_admin', 
+        {p_id_empresa: id_empresa_param, p_fecha_inicio: inicioTimestampZ, p_fecha_fin: finTimestampZ})
+      if(error){
+        throw error;
+      }
+
+      datosReporte = registros;
+
+    res.status(200).json(datosReporte);
+
+  } catch (error) {
+    console.error('Ocurrio un error: ', error);
+    res.status(500).json({
+      message: 'Ocurrio un error en el servidor. Intente de nuevo'
+    })
+  }
+  
+}
+
+module.exports = {getCajerosReportes, getClientesReportes, getSucursalesReportes, reporteVentasController, getProductosOfInventorySucursal, getUsuarioOfSucursal};

@@ -542,7 +542,7 @@ const getEmpleadoReporteDesglose = async (req, res) => {
     }
   });
 
-    res.status(200).json(datosReporte.filter(d => d.total !== 0));
+    res.status(200).json(datosFactura);
 
 
   } catch (error) {

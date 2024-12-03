@@ -402,7 +402,7 @@ const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
       await Promise.all(promesas);
       console.log(datosReporte);
 
-    res.status(200).json(datosReporte);
+    res.status(200).json(datosReporte.filter(d => d.total !== 0));
 
   } catch (error) {
     console.error('Ocurrio un error: ', error);
@@ -418,7 +418,7 @@ const getClientesReportes = async (req, res) => {
   const fechaInicio = req.params.fechaInicio;
   const fechaFin = req.params.fechaFin;
   const supabase = req.supabase;
-  let idsUsar = [];
+
   let datosReporte = [];
   
   try {
@@ -454,7 +454,7 @@ const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
 
     }
 
-    res.status(200).json(datosReporte);
+    res.status(200).json(datosReporte.filter(d => d.total !== 0));
 
   } catch (error) {
     console.error('Ocurrio un error: ', error);
@@ -542,7 +542,7 @@ const getEmpleadoReporteDesglose = async (req, res) => {
     }
   });
 
-    res.status(200).json(datosFactura);
+    res.status(200).json(datosReporte.filter(d => d.total !== 0));
 
 
   } catch (error) {

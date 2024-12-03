@@ -383,7 +383,15 @@ const eliminarCategoriaPromocion = async (req, res) => {
             return res.status(403).json({ error: 'No tiene permisos para eliminar esta promoción' });
         }
 
-        // Eliminar la promoción
+        // Primero eliminar las alertas asociadas
+        const { error: errorAlerts } = await supabase
+            .from('alerts_promocion')
+            .delete()
+            .eq('id_promocion_categoria', id);
+
+        if (errorAlerts) throw errorAlerts;
+
+        // Luego eliminar la promoción
         const { error } = await supabase
             .from(TABLA_CATEGORIA_PROMOCION)
             .delete()

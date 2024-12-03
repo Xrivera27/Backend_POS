@@ -556,7 +556,8 @@ const calculos = {
          totalGravado15: 0,
          totalGravado18: 0,
          totalExtento: 0,
-         total: 0 
+         total: 0,
+         cantidad_final: 0
         }
 
             const { data: cierreCaja, error: cierreError } = await supabase.from('Ventas')
@@ -587,6 +588,10 @@ const calculos = {
                         if(cierre.facturas[0].tipo_factura === 'Efectivo'){
                             reporte.totalEfectivo += cierre.facturas[0].total;
                         }
+
+                        if(cierre.facturas[0].tipo_factura === 'Transferencia'){
+                            reporte.totalTarjeta += cierre.facturas[0].total;
+                        }
                         //Calculamos impuestos por productos
                          reporte.totalGravado15 += cierre.facturas[0].gravado_15;
                          reporte.totalGravado18 += cierre.facturas[0].gravado_18;
@@ -600,6 +605,7 @@ const calculos = {
                          reporte.total += cierre.facturas[0].total;
                     });
 
+                    reporte.cantidad_final = caja.valor_actual;
                     reporte.fechaInicio = new Date(caja.created_at).toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' });
                     reporte.fechaFinal = new Date(caja.closed_at).toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' });
                 }

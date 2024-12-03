@@ -397,6 +397,69 @@ const getCategoriasPopulares = async (req, res) => {
     }
 };
 
+const getUltimasVentas = async (req, res) => {
+    const supabase = req.supabase;
+    const id_usuario = req.params.id_usuario;
 
+    try {
+        // Obtener las últimas ventas CON ESTADO PAGADA
+        const { data: ventas, error: errorVentas } = await supabase
+            .from('Ventas')
+            .select(`
+                created_at,
+                id_cliente,
+                id_usuario,
+                id_venta,
+                estado
+            `)
+            .eq('estado', 'Pagada')  // Filtro explícito para ventas pagadas
+            .order('created_at', { ascending: false })
+            .limit(5);
 
-module.exports = { getVentasEmpresa, getAlertasPorPromocionProducto, getClientesEmpresa, getAlertasPromocion, getVentasUltimosTresMeses, getCategoriasPopulares };
+        if (errorVentas) {
+            return res.status(500).json({ error: 'Error al obtener ventas: ' + errorVentas.message });
+        }
+
+        // Obtener los datos relacionados por separado
+        const ventasFormateadas = await Promise.all(ventas.map(async (venta) => {
+            // Obtener datos del cliente
+            const { data: cliente } = await supabase
+                .from('Clientes')
+                .select('nombre_completo, telefono')
+                .eq('id_cliente', venta.id_cliente)
+                .single();
+
+            // Obtener datos del usuario (vendedor)
+            const { data: usuario } = await supabase
+                .from('Usuarios')
+                .select('nombre, apellido')
+                .eq('id_usuario', venta.id_usuario)
+                .single();
+
+            // Obtener datos de la factura
+            const { data: factura } = await supabase
+                .from('facturas')
+                .select('total')
+                .eq('id_venta', venta.id_venta)
+                .single();
+
+            return {
+                nombre: cliente?.nombre_completo || 'Consumidor Final',
+                vendedor: usuario ? `${usuario.nombre} ${usuario.apellido}` : 'N/A',
+                numero: cliente?.telefono || '0000-0000',
+                fecha: venta.created_at,
+                total: factura ? `L. ${factura.total.toFixed(2)}` : 'L. 0.00'
+            };
+        }));
+
+        res.status(200).json({
+            sales: ventasFormateadas
+        });
+
+    } catch (error) {
+        console.error('Error en el endpoint de últimas ventas:', error);
+        res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
+    }
+};
+
+module.exports = { getVentasEmpresa, getAlertasPorPromocionProducto, getClientesEmpresa, getAlertasPromocion, getVentasUltimosTresMeses, getCategoriasPopulares, getUltimasVentas };

@@ -58,7 +58,21 @@ const getIdCajeroBySucursal = async (id_sucursal, supabase) => {
         .eq('Usuarios.estado', true)
         .eq('id_sucursal', id_sucursal);
 
+        if(ids.length < 1 ){
+            return;
+        }
+
         const newIds = ids.filter(u => u.Usuarios !== null);
+        const idsFixed = [];
+
+        newIds.forEach(i => {
+            idsFixed.push({
+                id_usuario: i.id_usuario,
+                nombre: i.Usuarios.nombre,
+                apellido: i.Usuarios.apellido
+            });
+        });
+        
 
         if (error){
             throw error;
@@ -66,7 +80,7 @@ const getIdCajeroBySucursal = async (id_sucursal, supabase) => {
 
         return {
             resultado: true,
-            ids: newIds
+            ids: idsFixed
         }
 
     } catch (error) {

@@ -1,5 +1,6 @@
 const { existeRelacion, getIdUsersBySucursal, getSucursalesbyUser, getIdCajeroBySucursal } = require('../db/sucursalUsuarioSvc.js');
 const { getRolByUsuario } = require('../db/validaciones.js');
+const { getEmpresaId } = require('../db/empresaSvc.js')
 
 const reporteVentasController = {
   async getReporteVentas(req, res) {
@@ -344,6 +345,7 @@ const getCajerosReportes = async (req, res) => {
   const fechaInicio = req.params.fechaInicio;
   const fechaFin = req.params.fechaFin;
   const supabase = req.supabase;
+  let idsUsar = [];
   let datosReporte = [];
   
   try {
@@ -355,31 +357,46 @@ const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
     const id_rol = await getRolByUsuario(id_usuario, supabase);
 
     if(id_rol === 4){
+      const id_empresa_param = await getEmpresaId(id_usuario, supabase);
+      const { data: usuarios, error: errorUsuario } = await supabase.rpc('get_usuariosbyidusuario', { id_empresa_param });
+     
+     if( !usuarios || usuarios.length === 0){
       return res.status(200).json({
-        message: 'Es un ceo'
-      })
+        message: 'No hay cajeros'
+      });
+     }
+
+     const usuarioFilter = usuarios.filter(u => u.estado === true && u.id_rol === 3  )
+
+     if (errorUsuario){
+      throw 'Error al recuperar IDs de usuarios al intentar recuperar reporte por empleados de ceo';
     }
 
-    const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+    idsUsar = usuarioFilter;
 
-    
-   // const { ids: idUsersS , resultado: resultadoUsers } = await getIdUsersBySucursal(id_sucursal, supabase);
-
-    const { ids: idsCajeros , resultado: resultadoCajeros } = await getIdCajeroBySucursal(id_sucursal, supabase);
-
-    if (!resultadoCajeros){
-      throw 'Error al recuperar IDs de usuarios al intentar recuperar reporte por empleados';
     }
+    else{
+      const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+
+      const { ids: idsCajeros , resultado: resultadoCajeros } = await getIdCajeroBySucursal(id_sucursal, supabase);
+
+      if (!resultadoCajeros){
+        throw 'Error al recuperar IDs de usuarios al intentar recuperar reporte por empleados';
+      }
+
+      idsUsar = idsCajeros;
+    }
+
 
     const promesas = 
-    idsCajeros.map(async (i) => {
+    idsUsar.map(async (i) => {
         const {data: registro, error} = await supabase.rpc('obtener_reportes_por_usuario_fecha', 
           {p_id_usuario: i.id_usuario, p_fecha_inicio: inicioTimestampZ, p_fecha_fin: finTimestampZ})
         if(error){
           throw error;
         }
         registro[0].id_usuario = i.id_usuario;
-        registro[0].nombre = `${i.Usuarios.nombre} ${i.Usuarios.apellido}`
+        registro[0].nombre = `${i.nombre} ${i.apellido}`
         datosReporte.push(registro[0])
       });
 

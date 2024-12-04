@@ -557,7 +557,7 @@ const cancelarVenta = async (req, res) => {
 
         const { data: caja, error: cajaError } = await supabase
             .from('caja')
-            .select('valor_actual, valor_inicial')
+            .select('valor_actual, valor_inicial, dinerocaja')
             .eq('id_caja', venta.id_caja)
             .single();
 
@@ -565,6 +565,7 @@ const cancelarVenta = async (req, res) => {
 
         const montoDevolver = venta.facturas[0].total;
         const nuevoValorCaja = caja.valor_actual - montoDevolver;
+        const nuevoDineroCaja = caja.dinerocaja - montoDevolver;
 
         // Actualizar el inventario
         const { aumentarInventario } = require('../db/inventarioSvc');
@@ -579,10 +580,13 @@ const cancelarVenta = async (req, res) => {
             await aumentarInventario(inventario, detalle.cantidad, supabase);
         }
 
-        // Actualizar la caja
+        // Actualizar la caja con ambos valores
         const { error: updateCajaError } = await supabase
             .from('caja')
-            .update({ valor_actual: nuevoValorCaja })
+            .update({ 
+                valor_actual: nuevoValorCaja,
+                dinerocaja: nuevoDineroCaja
+            })
             .eq('id_caja', venta.id_caja);
 
         if (updateCajaError) throw new Error('Error al actualizar la caja');
@@ -686,25 +690,37 @@ const obtenerReporteCancelacion = async (req, res) => {
 const generarReporteCancelacion = async (req, res) => {
     const { supabase } = req;
     const { id_venta } = req.params;
-    
-    console.log('Iniciando generación de reporte para venta:', id_venta);
 
     try {
+        console.log('Buscando venta con ID:', id_venta);
+
         const { data: venta, error: ventaError } = await supabase
             .from('Ventas')
             .select(`
                 *,
-                facturas:facturas (*)
+                facturas!inner (
+                    *,
+                    factura_SAR (
+                        numero_factura_SAR
+                    )
+                ),
+                ventas_detalles (*)
             `)
             .eq('id_venta', id_venta)
             .single();
-
-        console.log('Datos de venta obtenidos:', venta);
         
-        if (ventaError || !venta) {
-            console.error('Error al obtener venta:', ventaError);
-            throw new Error('Venta no encontrada');
+        console.log('Resultado de la consulta:', { venta, error: ventaError });
+
+        if (ventaError) {
+            console.error('Error al obtener la venta:', ventaError);
+            throw new Error(`Error al obtener la venta: ${ventaError.message}`);
         }
+
+        if (!venta) {
+            throw new Error(`No se encontró la venta con ID: ${id_venta}`);
+        }
+
+        console.log('Buscando caja con ID:', venta.id_caja);
 
         const { data: caja, error: cajaError } = await supabase
             .from('caja')
@@ -712,69 +728,215 @@ const generarReporteCancelacion = async (req, res) => {
             .eq('id_caja', venta.id_caja)
             .single();
 
-        console.log('Datos de caja obtenidos:', caja);
+        console.log('Resultado de consulta de caja:', { caja, error: cajaError });
 
-        if (cajaError || !caja) {
-            console.error('Error al obtener caja:', cajaError);
-            throw new Error('Caja no encontrada');
+        if (cajaError) {
+            console.error('Error al obtener la caja:', cajaError);
+            throw new Error(`Error al obtener la caja: ${cajaError.message}`);
         }
 
-        // Crear el documento PDF
-        const doc = new PDFDocument();
+        if (!caja) {
+            throw new Error(`No se encontró la caja con ID: ${venta.id_caja}`);
+        }
+
+        const doc = new PDFDocument({
+            size: [227, 800],
+            margin: 15
+        });
         
-        // Configurar las cabeceras de respuesta
         res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename=cancelacion_venta_${id_venta}.pdf`);
+        res.setHeader('Content-Disposition', `attachment; filename=anulacion_venta_${id_venta}.pdf`);
         
-        // Pipe el PDF a la respuesta
         doc.pipe(res);
+        
+        const anchoDisponible = 197;
+        const anchoMitad = anchoDisponible / 2;
+        
+        const formatCurrency = (amount) => {
+            return `L. ${Number(amount).toFixed(2)}`;
+        };
+        
+        const agregarLineaDetalle = (label, value) => {
+            doc.font('Helvetica')
+               .text(label, {
+                   continued: false,
+                   width: anchoDisponible * 0.6,
+                   align: 'left'
+               });
+            
+            doc.text(value, {
+                width: anchoDisponible * 0.4,
+                align: 'right',
+                y: doc.y - doc.currentLineHeight()
+            });
+            
+            doc.moveDown(0.2);
+        };
 
-        // Contenido del PDF
-        doc.fontSize(16)
-           .text('Reporte de Cancelación de Venta', { align: 'center' })
-           .moveDown();
+        // Título
+        doc.font('Helvetica-Bold')
+           .fontSize(12)
+           .text('REPORTE DE ANULACIÓN', {
+               align: 'center',
+               width: anchoDisponible
+           })
+           .moveDown(0.5);
+        
+        // Línea separadora
+        doc.moveTo(15, doc.y)
+           .lineTo(212, doc.y)
+           .stroke()
+           .moveDown(0.5);
+        
+        // Información básica
+        doc.fontSize(8)
+           .text(`Fecha Anulación: ${new Date().toLocaleString('es-HN')}`, {
+               width: anchoDisponible,
+               align: 'left'
+           })
+           .text(`Factura: ${venta.facturas[0]?.factura_SAR?.[0]?.numero_factura_SAR || 'N/A'}`, {
+               width: anchoDisponible,
+               align: 'left'
+           })
+           .moveDown(0.5);
 
-        doc.fontSize(12)
-           .text(`Fecha de Cancelación: ${new Date().toLocaleString('es-HN')}`)
-           .text(`No. de Venta: ${venta.id_venta}`)
-           .text(`Fecha de Venta Original: ${new Date(venta.created_at).toLocaleString('es-HN')}`)
-           .moveDown();
+        const factura = venta.facturas[0];
+        const montoAnulado = factura.total;
+        
+        // Resumen de totales
+        doc.font('Helvetica-Bold')
+           .text('RESUMEN DE ANULACIÓN:', {
+               width: anchoDisponible,
+               align: 'center'
+           })
+           .moveDown(0.5);
 
-        if (venta.facturas && venta.facturas[0]) {
-            doc.text('Detalles de la Transacción:')
-               .text(`Monto a Cancelar: L. ${venta.facturas[0].total.toFixed(2)}`)
-               .text(`Tipo de Pago Original: ${venta.facturas[0].tipo_factura}`)
-               .text(`Valor en Caja Actual: L. ${caja.valor_actual.toFixed(2)}`)
-               .moveDown();
-        }
+        // Mostrar los totales
+        [
+            ['Total Efectivo:', formatCurrency(factura.tipo_factura === 'Efectivo' ? montoAnulado : 0)],
+            ['Total Transferencia:', formatCurrency(factura.tipo_factura === 'Transferencia' ? montoAnulado : 0)],
+            ['Total ISV 15%:', formatCurrency(factura.isv15 || 0)],
+            ['Total ISV 18%:', formatCurrency(factura.isv18 || 0)],
+            ['Total Gravado 15%:', formatCurrency(factura.gravado15 || 0)],
+            ['Total Gravado 18%:', formatCurrency(factura.gravado18 || 0)],
+            ['Total Exento:', formatCurrency(factura.exento || 0)]
+        ].forEach(([label, value]) => {
+            agregarLineaDetalle(label, value);
+        });
+        
+        // Línea separadora
+        doc.moveDown(0.5)
+           .moveTo(15, doc.y)
+           .lineTo(212, doc.y)
+           .stroke()
+           .moveDown(0.5);
+        
+        // Cuadre de caja
+        doc.font('Helvetica-Bold')
+           .text('CUADRE DE CAJA:', {
+               width: anchoDisponible,
+               align: 'center'
+           })
+           .moveDown(0.5);
 
-        doc.fontSize(12)
-           .text('Motivo de la Cancelación:', { underline: true })
-           .text(venta.descripcion || 'No se proporcionó motivo')
-           .moveDown();
+        const totalSistema = caja.valor_actual;
+        const totalCaja = caja.dinerocaja;
+        const diferencia = totalCaja - totalSistema;
+        const hayFaltante = diferencia < 0;
+        const haySobrante = diferencia > 0;
 
-        // Firmas
+        [
+            ['Total Sistema:', formatCurrency(totalSistema)],
+            ['Total en Caja:', formatCurrency(totalCaja)],
+            ...(haySobrante ? [['Sobrante:', formatCurrency(diferencia)]] : []),
+            ...(hayFaltante ? [['Faltante:', formatCurrency(Math.abs(diferencia))]] : []),
+            ...(!haySobrante && !hayFaltante ? [['Estado:', 'Cuadrado']] : [])
+        ].forEach(([label, value]) => {
+            agregarLineaDetalle(label, value);
+        });
+        
+        // Línea separadora
+        doc.moveDown(0.5)
+           .moveTo(15, doc.y)
+           .lineTo(212, doc.y)
+           .stroke()
+           .moveDown(0.5);
+
+        // Observación
+        doc.font('Helvetica-Bold')
+           .text('OBSERVACIÓN:', {
+               width: anchoDisponible,
+               align: 'center'
+           })
+           .moveDown(0.5)
+           .font('Helvetica')
+           .fontSize(8)
+           .text(venta.descripcion || 'Sin observación', {
+               width: anchoDisponible,
+               align: 'left'
+           })
+           .moveDown(0.5);
+        
+        // Línea separadora
+        doc.moveTo(15, doc.y)
+           .lineTo(212, doc.y)
+           .stroke()
+           .moveDown(0.5);
+        
+        // Firmas una al lado de la otra
+        doc.moveDown(2);
+        const yPosicion = doc.y;
+        
+        // Primera firma (izquierda)
+        doc.fontSize(8)
+           .text('_________________', {
+               width: anchoMitad,
+               align: 'center',
+               continued: false
+           })
+           .text('Firma del Cajero', {
+               width: anchoMitad,
+               align: 'center'
+           });
+        
+        // Segunda firma (derecha)
+        doc.y = yPosicion;
+        doc.x = anchoMitad + 15;
+        doc.text('_________________', {
+               width: anchoMitad,
+               align: 'center',
+               continued: false
+           })
+           .text('Firma del Supervisor', {
+               width: anchoMitad,
+               align: 'center'
+           });
+        
+        // Fecha y hora de impresión
+        doc.x = 15;
         doc.moveDown(2)
-           .text('_______________________', { align: 'center' })
-           .text('Firma del Supervisor', { align: 'center' })
-           .moveDown()
-           .text('_______________________', { align: 'center' })
-           .text('Firma del Cajero', { align: 'center' });
+           .fontSize(6)
+           .text(`Impreso: ${new Date().toLocaleString('es-HN')}`, {
+               align: 'center',
+               width: anchoDisponible
+           });
 
-        // Finalizar el PDF
         doc.end();
 
     } catch (error) {
-        console.error('Error al generar reporte:', error);
+        console.error('Error completo en generarReporteCancelacion:', error);
         if (!res.headersSent) {
             res.status(500).json({
                 success: false,
-                message: error.message
+                message: error.message,
+                details: {
+                    id_venta,
+                    errorCompleto: error.toString()
+                }
             });
         }
     }
 };
-
 
 module.exports = {
     obtenerVentas,

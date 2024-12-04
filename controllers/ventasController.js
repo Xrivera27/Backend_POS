@@ -1129,35 +1129,77 @@ const recuperarVentaGuardada = async (req, res) => {
 const generarPDFCierreCaja = async (req, res) => {
     try {
         const reporte = req.body;
-        const doc = new PDFDocument();
+        const doc = new PDFDocument({
+            size: [227, 800],
+            margin: 15
+        });
         
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'attachment; filename=cierre_caja.pdf');
         
         doc.pipe(res);
         
+        const anchoDisponible = 197;
+        const anchoMitad = anchoDisponible / 2;
+        
         // Título
         doc.font('Helvetica-Bold')
-           .fontSize(20)
-           .text('Reporte de Cierre de Caja', { align: 'center' })
-           .moveDown();
+           .fontSize(12)
+           .text('REPORTE DE CIERRE DE CAJA', {
+               align: 'center',
+               width: anchoDisponible
+           })
+           .moveDown(0.5);
+        
+        // Línea separadora
+        doc.moveTo(15, doc.y)
+           .lineTo(212, doc.y)
+           .stroke()
+           .moveDown(0.5);
         
         // Información básica
-        doc.fontSize(12)
-           .text(`Fecha de Apertura: ${reporte.fechaInicio}`)
-           .text(`Fecha de Cierre: ${reporte.fechaFinal}`)
-           .moveDown();
+        doc.fontSize(8)
+           .text(`Fecha Apertura: ${reporte.fechaInicio}`, {
+               width: anchoDisponible,
+               align: 'left'
+           })
+           .text(`Fecha Cierre: ${reporte.fechaFinal}`, {
+               width: anchoDisponible,
+               align: 'left'
+           })
+           .moveDown(0.5);
         
         const formatCurrency = (amount) => {
             return `L. ${Number(amount).toFixed(2)}`;
         };
         
+        // Función para agregar línea de detalle
+        const agregarLineaDetalle = (label, value) => {
+            doc.font('Helvetica')
+               .text(label, {
+                   continued: false,
+                   width: anchoDisponible * 0.6,
+                   align: 'left'
+               });
+            
+            doc.text(value, {
+                width: anchoDisponible * 0.4,
+                align: 'right',
+                y: doc.y - doc.currentLineHeight()
+            });
+            
+            doc.moveDown(0.2);
+        };
+        
         // Resumen de ventas
         doc.font('Helvetica-Bold')
-           .text('Resumen de Ventas:')
+           .text('RESUMEN DE VENTAS:', {
+               width: anchoDisponible,
+               align: 'center'
+           })
            .moveDown(0.5);
         
-        doc.font('Helvetica');
+        // Agregar detalles de ventas
         [
             ['Total Efectivo:', formatCurrency(reporte.totalEfectivo)],
             ['Total Transferencia:', formatCurrency(reporte.totalTarjeta)],
@@ -1167,48 +1209,85 @@ const generarPDFCierreCaja = async (req, res) => {
             ['Total Gravado 18%:', formatCurrency(reporte.totalGravado18)],
             ['Total Exento:', formatCurrency(reporte.totalExtento)]
         ].forEach(([label, value]) => {
-            doc.text(label, { continued: true })
-               .text(value, { align: 'right' })
+            agregarLineaDetalle(label, value);
         });
         
-        // Cuadre de caja
-        doc.moveDown()
-           .font('Helvetica-Bold')
-           .text('Cuadre de Caja:', { underline: true })
+        // Línea separadora
+        doc.moveDown(0.5)
+           .moveTo(15, doc.y)
+           .lineTo(212, doc.y)
+           .stroke()
            .moveDown(0.5);
         
-        doc.font('Helvetica');
+        // Cuadre de caja
+        doc.font('Helvetica-Bold')
+           .text('CUADRE DE CAJA:', {
+               width: anchoDisponible,
+               align: 'center'
+           })
+           .moveDown(0.5);
         
         // Calcular la diferencia
         const diferencia = reporte.dineroDeclarado - reporte.total_sistema;
         const haySobrante = diferencia > 0;
         const hayFaltante = diferencia < 0;
-
+        
         [
-            ['Total en Sistema:', formatCurrency(reporte.total_sistema)],
+            ['Total Sistema:', formatCurrency(reporte.total_sistema)],
             ['Total en Caja:', formatCurrency(reporte.dineroDeclarado)],
-            // Solo mostrar uno de estos según corresponda
             ...(haySobrante ? [['Sobrante:', formatCurrency(diferencia)]] : []),
             ...(hayFaltante ? [['Faltante:', formatCurrency(Math.abs(diferencia))]] : []),
-            // Si no hay diferencia, mostrar que está cuadrado
             ...(!haySobrante && !hayFaltante ? [['Estado:', 'Cuadrado']] : [])
         ].forEach(([label, value]) => {
-            doc.text(label, { continued: true })
-               .text(value, { align: 'right' });
+            agregarLineaDetalle(label, value);
         });
         
-        // Firmas
-        doc.moveDown(2)
-           .text('_________________________', { align: 'center' })
-           .text('Firma del Cajero', { align: 'center' })
-           .moveDown()
-           .text('_________________________', { align: 'center' })
-           .text('Firma del Supervisor', { align: 'center' });
+        // Línea separadora
+        doc.moveDown(0.5)
+           .moveTo(15, doc.y)
+           .lineTo(212, doc.y)
+           .stroke()
+           .moveDown(0.5);
+        
+        // Firmas una al lado de la otra
+        doc.moveDown(2);
+        
+        // Guardar la posición Y actual
+        const yPosicion = doc.y;
+        
+        // Primera firma (izquierda)
+        doc.fontSize(8)
+           .text('_________________', {
+               width: anchoMitad,
+               align: 'center',
+               continued: false
+           })
+           .text('Firma del Cajero', {
+               width: anchoMitad,
+               align: 'center'
+           });
+        
+        // Segunda firma (derecha)
+        doc.y = yPosicion; // Volver a la misma altura
+        doc.x = anchoMitad + 15; // Mover a la mitad derecha
+        doc.text('_________________', {
+               width: anchoMitad,
+               align: 'center',
+               continued: false
+           })
+           .text('Firma del Supervisor', {
+               width: anchoMitad,
+               align: 'center'
+           });
         
         // Fecha y hora de impresión
-        doc.moveDown()
-           .fontSize(8)
-           .text(`Impreso el: ${new Date().toLocaleString('es-HN')}`, { align: 'right' });
+        doc.x = 15; // Resetear posición X
+        doc.moveDown(2)
+           .fontSize(6)
+           .text(`Impreso: ${new Date().toLocaleString('es-HN')}`, {
+               align: 'center',
+               width: anchoDisponible
+           });
         
         doc.end();
         
@@ -1220,6 +1299,7 @@ const generarPDFCierreCaja = async (req, res) => {
         });
     }
 };
+
 
   // Nueva ruta para obtener totales de caja
   const getTotalesCaja = async(req, res) => {

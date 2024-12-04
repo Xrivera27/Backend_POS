@@ -1,5 +1,35 @@
 const { conteoProdinCat } = require('./catProdSvs.js');
 
+const pruebaPromos = async(id_producto, supabase) => {
+
+    try {
+        
+        const { promocionActiva, resultado, error} = await obtenerPromos(id_producto, supabase);
+        if(resultado){
+            return {
+                resultado: true, 
+                promos: promocionActiva
+            }
+        }
+
+        if(error){
+            throw error;
+        }
+
+        return {
+            resultado: false, 
+            promos: []
+        }
+
+    } catch (error) {
+        console.error('Ocurrio un error en el servidor. ', error);
+        return {
+            resultado: false, 
+            promos: []
+        }
+    }
+}
+
 const tienePromoProducto = async (id_producto, supabase) => {
 try {
     const {data: promocionProducto, error} = await supabase
@@ -206,4 +236,4 @@ const obtenerPromos = async(id_producto, supabase) => {
     }
 }
 
-module.exports = { tienePromoProducto, tienePromoCategoria, tienePromoCategoriabyCategoria, obtenerPromos }
+module.exports = { pruebaPromos, tienePromoProducto, tienePromoCategoria, tienePromoCategoriabyCategoria, obtenerPromos }

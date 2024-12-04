@@ -830,6 +830,11 @@ const recuperarVentaGuardada = async (req, res) => {
     const supabase = req.supabase;
     const id_venta = req.params.id_venta;
     const id_usuario = req.params.id_usuario;
+
+    const formatNumeroFactura = (numero) => {
+        const formatted = `${numero.slice(0, 3)}-${numero.slice(3, 6)}-${numero.slice(6, 8)}-${numero.slice(8)}`;
+        return formatted;
+    };
   
     try {
         if (!id_venta || !id_usuario) {
@@ -1030,19 +1035,18 @@ const recuperarVentaGuardada = async (req, res) => {
             .text(`Email: ${empresa.correo_principal}`, { align: 'center' })
             .moveDown(0.5);
 
-
-            //Informacion Factura
-            doc.font('Helvetica')
+        //Informacion Factura
+        doc.font('Helvetica')
             .fontSize(8)
             .text(`Sucursal: ${sucursal.nombre_administrativo}`)
-            .text(`Factura: ${venta.facturas[0].factura_SAR[0].numero_factura_SAR}`)
+            .text(`Factura: ${formatNumeroFactura(venta.facturas[0].factura_SAR[0].numero_factura_SAR)}`)
             .text(`Fecha Emisión: ${format(new Date(venta.created_at), 'dd-MM-yyyy HH:mm:ss')}`)
-            .text(`Cajer@: ${venta.Usuarios.nombre} ${venta.Usuarios.apellido}`) // Agregamos el cajero
+            .text(`Cajer@: ${venta.Usuarios.nombre} ${venta.Usuarios.apellido}`)
             .text(`Cliente: ${venta.Clientes?.nombre_completo || 'Consumidor Final'}`)
             .text(`R.T.N: ${venta.Clientes?.rtn || '00000000000000'}`)
             .moveDown(0.5);
 
-          // Encabezados de la tabla
+        // Encabezados de la tabla
         const startY = doc.y;
         doc.font('Helvetica-Bold')
             .text('Cant.', 10, startY, { width: 25 })
@@ -1068,11 +1072,9 @@ const recuperarVentaGuardada = async (req, res) => {
                 doc.moveDown();
         });
 
-      // Línea separadora
-      doc.moveTo(10, doc.y + 5).lineTo(217, doc.y + 5).stroke();
-      doc.moveDown();
-      
-           
+        // Línea separadora
+        doc.moveTo(10, doc.y + 5).lineTo(217, doc.y + 5).stroke();
+        doc.moveDown();
 
         printLineItem('IMPORTE EXONERADO:', venta.facturas[0].total_extento);
         printLineItem('IMPORTE GRAVADO 15%:', venta.facturas[0].gravado_15);
@@ -1105,7 +1107,7 @@ const recuperarVentaGuardada = async (req, res) => {
             .text('No. Registro de SAG:', { align: 'center' })
             .moveDown()
             .text(`CAI: ${venta.facturas[0].factura_SAR[0].numero_CAI}`, { align: 'center' })
-            .text(`Rango Facturación: ${datosSAR.rango_inicial} A ${datosSAR.rango_final}`, { align: 'center' })
+            .text(`Rango Facturación: ${formatNumeroFactura(datosSAR.rango_inicial)} A ${formatNumeroFactura(datosSAR.rango_final)}`, { align: 'center' })
             .text(`Fecha Límite de Emisión: ${format(new Date(datosSAR.fecha_vencimiento), 'dd-MM-yyyy')}`, { align: 'center' })
             .moveDown()
             .font('Helvetica-Bold')

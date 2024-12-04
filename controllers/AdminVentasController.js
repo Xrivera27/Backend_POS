@@ -223,13 +223,20 @@ const generarFactura = async (req, res) => {
     const id_venta = req.params.id_venta;
     const id_usuario = req.params.id_usuario;
     const esCopia = req.query.esCopia === 'true';
+
+    const formatNumeroFactura = (numero) => {
+        return `${numero.slice(0,3)}-${numero.slice(3,6)}-${numero.slice(6,8)}-${numero.slice(8)}`;
+    };
+
+    const formatRangoFacturacion = (numero) => {
+        return `${numero.slice(0,3)}-${numero.slice(3,6)}-${numero.slice(6,8)}-${numero.slice(8)}`;
+    };
   
     try {
         if (!id_venta || !id_usuario) {
             throw new Error('Parámetros incompletos');
         }
 
-        // Modificamos la consulta para incluir los datos del usuario
         const { data: venta, error: ventaError } = await supabase
             .from('Ventas')
             .select(`
@@ -413,7 +420,6 @@ const generarFactura = async (req, res) => {
             doc.moveDown(0.5);
         };
 
-        // Encabezado
         doc.font('Helvetica-Bold')
             .fontSize(14)
             .text(empresa.nombre, { align: 'center' })
@@ -424,18 +430,16 @@ const generarFactura = async (req, res) => {
             .text(`Email: ${empresa.correo_principal}`, { align: 'center' })
             .moveDown(0.5);
 
-        // Información de factura
-              doc.font('Helvetica')
+        doc.font('Helvetica')
             .fontSize(8)
             .text(`Sucursal: ${sucursal.nombre_administrativo}`)
-            .text(`Factura: ${venta.facturas[0].factura_SAR[0].numero_factura_SAR}`)
+            .text(`Factura: ${formatNumeroFactura(venta.facturas[0].factura_SAR[0].numero_factura_SAR)}`)
             .text(`Fecha Emisión: ${format(new Date(venta.created_at), 'dd-MM-yyyy HH:mm:ss')}`)
-            .text(`Cajer@: ${venta.Usuarios.nombre} ${venta.Usuarios.apellido}`) // Agregamos el cajero
+            .text(`Cajer@: ${venta.Usuarios.nombre} ${venta.Usuarios.apellido}`)
             .text(`Cliente: ${venta.Clientes?.nombre_completo || 'Consumidor Final'}`)
             .text(`R.T.N: ${venta.Clientes?.rtn || '00000000000000'}`)
             .moveDown(0.5);
 
-        // Encabezados de la tabla
         const startY = doc.y;
         doc.font('Helvetica-Bold')
             .text('Cant.', 10, startY, { width: 25 })
@@ -443,11 +447,9 @@ const generarFactura = async (req, res) => {
             .text('Precio', 165, startY, { width: 40, align: 'right' })
             .text('T', 205, startY, { width: 12, align: 'center' });
 
-        // Línea separadora
         doc.moveTo(10, doc.y + 0).lineTo(217, doc.y + 0).stroke();
         doc.moveDown(0.3);
 
-        // Productos
         doc.font('Helvetica');
         detalles.forEach(item => {
             const y = doc.y;
@@ -461,7 +463,6 @@ const generarFactura = async (req, res) => {
                 doc.moveDown();
         });
 
-        // Línea separadora
         doc.moveTo(10, doc.y + 5).lineTo(217, doc.y + 5).stroke();
         doc.moveDown();
 
@@ -472,20 +473,17 @@ const generarFactura = async (req, res) => {
         printLineItem('ISV 15%:', venta.facturas[0].ISV_15);
         printLineItem('ISV 18%:', venta.facturas[0].ISV_18);
 
-        // Total y datos de pago
         doc.font('Helvetica-Bold')
             .text('Total:', 10)
             .text(venta.facturas[0].total.toFixed(2), 170, doc.y - 12, { align: 'right' })
             .font('Helvetica')
             .moveDown();
 
-        // Tipo de pago, efectivo y cambio
         doc.font('Helvetica');
         printLineItem('Tipo de Pago:', venta.facturas[0].tipo_factura);
         printLineItem('Efectivo:', venta.facturas[0].pago);
         printLineItem('Cambio:', venta.facturas[0].cambio);
 
-        // Resto del documento
         doc.text(' ', 10)
             .moveDown(0.5)
             .text(numeroALetras(venta.facturas[0].total), { align: 'center' })
@@ -496,12 +494,11 @@ const generarFactura = async (req, res) => {
             .text('No. Registro de SAG:', { align: 'center' })
             .moveDown()
             .text(`CAI: ${venta.facturas[0].factura_SAR[0].numero_CAI}`, { align: 'center' })
-            .text(`Rango Facturación: ${datosSAR.rango_inicial} A ${datosSAR.rango_final}`, { align: 'center' })
+            .text(`Rango Facturación: ${formatRangoFacturacion(datosSAR.rango_inicial)} A ${formatRangoFacturacion(datosSAR.rango_final)}`, { align: 'center' })
             .text(`Fecha Límite de Emisión: ${format(new Date(datosSAR.fecha_vencimiento), 'dd-MM-yyyy')}`, { align: 'center' })
             .moveDown()
             .font('Helvetica-Bold');
 
-        // Agregar el texto "FACTURA--COPIA" si es una copia
         if (esCopia) {
             doc.text('FACTURA--COPIA', { align: 'center' })
                 .moveDown();
@@ -523,7 +520,6 @@ const generarFactura = async (req, res) => {
         });
     }
 };
-
 
 const cancelarVenta = async (req, res) => {
     const { supabase } = req;

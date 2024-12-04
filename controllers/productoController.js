@@ -1,6 +1,7 @@
 const { getEmpresaId } = require('../db/empresaSvc.js');
 const { existenciProductCode } = require('../db/validaciones.js');
 const { catProdAdd, catProdGet, deleteCatProd } = require('../db/catProdSvs.js');
+const { pruebaPromos } = require('../db/promocionesSvs.js');
 
 const getProductosOfInventory = async (req, res) => {
     const supabase = req.supabase;
@@ -11,6 +12,20 @@ const getProductosOfInventory = async (req, res) => {
 
         const {data: productos, error} = await supabase.rpc('view_inventory_sucursal', {id_empresa_param})
         .select('*');
+
+        const promesaPromos = productos.map(async p => {
+            const { resultado, promos } = await pruebaPromos(p.id_producto, supabase);
+            if(resultado ){
+
+                p.promocion = promos.promocion_nombre || promos.nombre 
+            }
+            else {
+                p.promocion = 'Sin promoción';
+            }
+
+        });
+
+        await Promise.all(promesaPromos);
 
         if (error){
             throw 'Ocurrio un error al obtener productos.' + error;
@@ -31,6 +46,19 @@ const getProductosOfInventorySucursal = async (req, res) => {
 
         const {data: productos, error} = await supabase.rpc('view_inventory_only_sucursal', {id_sucursal_param})
         .select('*');
+
+        const promesaPromos = productos.map(async p => {
+            const { resultado, promos } = await pruebaPromos(p.id_producto, supabase);
+            if(resultado){
+     
+                p.promocion = promos.promocion_nombre || promos.nombre 
+            }
+            else {
+                p.promocion = 'Sin promoción';
+            }
+        });
+
+        await Promise.all(promesaPromos);
 
         if (error){
             throw 'Ocurrio un error al obtener productos.'

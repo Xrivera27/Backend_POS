@@ -19,14 +19,15 @@ const getVentasEmpresa = async (req, res) => {
             return res.status(500).json({ error: 'Error al obtener sucursales: ' + error.message });
         }
         if (data.length === 0) {
-            return res.status(500).json({ error: 'No hay sucursales disponibles: ' });
+            return res.status(500).json({ error: 'No hay sucursales disponibles' });
         }
 
         const { data: ventasSucursales, error: errorVentasSucursales } = await supabase.from('Ventas')
             .select('id_venta, facturas(id_factura, total)')
             .gte('created_at', inicioHoy.toISOString())
             .lte('created_at', finHoy.toISOString())
-            .in('id_sucursal', data.map(d => d.id_sucursal));  
+            .eq('estado', 'Pagada')  // Agregamos el filtro de estado
+            .in('id_sucursal', data.map(d => d.id_sucursal));
 
         if (errorVentasSucursales) {
             console.log(errorVentasSucursales);
@@ -36,7 +37,7 @@ const getVentasEmpresa = async (req, res) => {
         let total = 0;
         ventasSucursales.forEach(venta => {
             venta.facturas.forEach(factura => {
-                total += factura.total; // Agrega el total de cada factura a la variable global
+                total += factura.total;
             });
         });
 

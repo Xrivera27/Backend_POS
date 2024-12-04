@@ -140,44 +140,47 @@ const postUsuario = async (req, res) => {
   const { nombre, apellido, nombre_usuario, contraseña, correo, telefono, direccion, id_rol, id_sucursal } = req.body;
 
   try {
-
-    const { data: usuario, error } = await supabase.from('Usuarios').insert(
-      {
-        nombre: nombre,
-        apellido: apellido,
-        nombre_usuario: nombre_usuario,
-        contraseña: contraseña,
-        correo: correo,
-        telefono: telefono,
-        direccion: direccion,
-        id_rol: id_rol,
-        estado: true
-      }).select('*');
+    const { data: usuario, error } = await supabase.from('Usuarios').insert({
+      nombre,
+      apellido,
+      nombre_usuario,
+      contraseña,
+      correo,
+      telefono,
+      direccion,
+      id_rol,
+      estado: true
+    }).select('*');
 
     if (error) {
-      console.log(error);
+      // Si el error es por violación de unique constraint
+      if (error.code === '23505') {
+        if (error.message.includes('nombre_usuario')) {
+          return res.status(400).json({ error: 'El nombre de usuario ya está registrado' });
+        }
+        if (error.message.includes('correo')) {
+          return res.status(400).json({ error: 'El correo electrónico ya está registrado' });
+        }
+      }
       return res.status(500).json({ error: error.message });
     }
 
     const nuevaRelacion = await insertarRelacion(usuario[0].id_usuario, id_sucursal, supabase);
 
-    if (nuevaRelacion != true) {
- 
+    if (nuevaRelacion !== true) {
       const borrarUsuario = await deleteUsuario(usuario[0].id_usuario, supabase);
-      if(borrarUsuario) console.log('Se borro el usuario creado');
-
+      if(borrarUsuario) console.log('Se borró el usuario creado');
       throw new Error('Fallo del servidor');
     }
 
     usuario[0].sucursales = await getSucursalesbyUser(usuario[0].id_usuario, supabase);
-
     return res.status(200).json(usuario);
 
   } catch (error) {
-    console.log('ha habido un error en la api');
+    console.log('Ha habido un error en la api');
     res.status(500).json({ error: error.message });
   }
-}
+};
 
 const patchUsuario = async (req, res) => {
   const supabase = req.supabase;
@@ -185,33 +188,46 @@ const patchUsuario = async (req, res) => {
   const id_usuario = req.params.id_usuario;
 
   try {
-      const { data, error } = await supabase.from('Usuarios').update(
-           {
-        nombre: nombre,
-        apellido: apellido,
-        nombre_usuario: nombre_usuario,
-        contraseña: contraseña,
-        correo: correo,
-        telefono: telefono,
-        direccion: direccion,
-        id_rol: id_rol,
-      }).eq('id_usuario', id_usuario);
+    const { data, error } = await supabase.from('Usuarios').update({
+      nombre,
+      apellido,
+      nombre_usuario,
+      contraseña,
+      correo,
+      telefono,
+      direccion,
+      id_rol,
+    }).eq('id_usuario', id_usuario);
 
-      const { dataSucursal, errorSucursal } = await supabase.from('sucursales_usuarios').update({
-        id_sucursal: id_sucursal
-      }).eq('id_usuario', id_usuario);
-
-      if(error || errorSucursal) {
-       return res.status(500).json({error: error.message});
+    if (error) {
+      // Si el error es por violación de unique constraint
+      if (error.code === '23505') {
+        if (error.message.includes('nombre_usuario')) {
+          return res.status(400).json({ error: 'El nombre de usuario ya está registrado' });
+        }
+        if (error.message.includes('correo')) {
+          return res.status(400).json({ error: 'El correo electrónico ya está registrado' });
+        }
       }
+      return res.status(500).json({ error: error.message });
+    }
 
-      res.status(200).json({ data, dataSucursal });
+    const { dataSucursal, errorSucursal } = await supabase.from('sucursales_usuarios').update({
+      id_sucursal: id_sucursal
+    }).eq('id_usuario', id_usuario);
+
+    if (errorSucursal) {
+      return res.status(500).json({ error: errorSucursal.message });
+    }
+
+    res.status(200).json({ data, dataSucursal });
 
   } catch (error) {
-      console.log('ha habido un error en la api');
-      res.status(500).json({error: error.message});
+    console.log('Ha habido un error en la api');
+    res.status(500).json({ error: error.message });
   }
-}
+};
+
 
 const deleteUsuario = async (id_usuario, supabase) => {
   try {
@@ -252,6 +268,53 @@ const desactivarUsuario = async (req, res) => {
   }
 }
 
+const validarUsuario = async (req, res) => {
+  const supabase = req.supabase;
+  const { nombre_usuario, correo } = req.body;
+  const id_usuario = req.params.id_usuario; // Solo presente en modo edición
+
+  try {
+    // Construir query base
+    let query = supabase.from('Usuarios')
+      .select('id_usuario, nombre_usuario, correo')
+      .or(`nombre_usuario.eq.${nombre_usuario},correo.eq.${correo}`)
+      .eq('estado', true); // Solo usuarios activos
+    
+    // En modo edición, excluimos el usuario actual
+    if (id_usuario) {
+      query = query.neq('id_usuario', id_usuario);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error('Error al validar usuario: ' + error.message);
+    }
+
+    const duplicados = [];
+    
+    if (data && data.length > 0) {
+      // Verificar nombre de usuario duplicado
+      if (data.some(u => u.nombre_usuario === nombre_usuario)) {
+        duplicados.push('nombre_usuario');
+      }
+
+      // Verificar correo duplicado
+      if (data.some(u => u.correo === correo)) {
+        duplicados.push('correo');
+      }
+    }
+
+    res.status(200).json({ 
+      duplicados: duplicados.length > 0 ? duplicados : null 
+    });
+
+  } catch (error) {
+    console.error('Error al validar usuario:', error);
+    res.status(500).json({ error: 'Error al validar la información del usuario' });
+  }
+};
+
 module.exports = {
-  getUsuario, getRolUsuario, getUsuarioOfSucursal, getUsuarioOfEmpresa, postUsuario, patchUsuario, desactivarUsuario
+  getUsuario, getRolUsuario, getUsuarioOfSucursal, getUsuarioOfEmpresa, postUsuario, patchUsuario, desactivarUsuario, validarUsuario
 };

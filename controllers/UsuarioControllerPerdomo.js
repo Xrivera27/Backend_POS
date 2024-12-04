@@ -1,4 +1,3 @@
-// controllers/usuarioController.js
 const { supabaseClient: supabase } = require('../supabaseClient');
 
 const getUsuarios = async (req, res) => {
@@ -43,7 +42,47 @@ const postUsuario = async (req, res) => {
       id_sucursal
     } = req.body;
 
-    // Crear el usuario
+    // Verificar si el nombre de usuario ya existe
+    const { data: existingUsername, error: usernameError } = await supabase
+      .from('Usuarios')
+      .select('id_usuario')
+      .eq('nombre_usuario', nombre_usuario)
+      .eq('estado', true)
+      .single();
+
+    if (usernameError && usernameError.code !== 'PGRST116') {
+      console.error('Error al verificar nombre de usuario:', usernameError);
+      return res.status(400).json({ error: usernameError.message });
+    }
+
+    if (existingUsername) {
+      return res.status(400).json({ 
+        error: 'El nombre de usuario ya está en uso',
+        field: 'nombre_usuario'
+      });
+    }
+
+    // Verificar si el correo ya existe
+    const { data: existingEmail, error: emailError } = await supabase
+      .from('Usuarios')
+      .select('id_usuario')
+      .eq('correo', correo)
+      .eq('estado', true)
+      .single();
+
+    if (emailError && emailError.code !== 'PGRST116') {
+      console.error('Error al verificar correo:', emailError);
+      return res.status(400).json({ error: emailError.message });
+    }
+
+    if (existingEmail) {
+      return res.status(400).json({ 
+        error: 'El correo electrónico ya está registrado',
+        field: 'correo'
+      });
+    }
+
+    // Si pasa las validaciones, crear el usuario
     const { data: usuario, error: userError } = await supabase
       .from('Usuarios')
       .insert({

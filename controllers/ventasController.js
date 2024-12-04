@@ -883,7 +883,7 @@ const recuperarVentaGuardada = async (req, res) => {
 
         const { data: sucursal, error: sucursalError } = await supabase
             .from('Sucursales')
-            .select('nombre_administrativo, direccion, telefono, correo, id_empresa')
+            .select('nombre_administrativo, telefono, correo, id_empresa')
             .eq('id_sucursal', id_sucursal)
             .single();
         
@@ -895,7 +895,7 @@ const recuperarVentaGuardada = async (req, res) => {
 
         const { data: empresa, error: empresaError } = await supabase
             .from('Empresas')
-            .select('nombre, telefono_principal, correo_principal')
+            .select('nombre, telefono_principal, correo_principal, direccion')
             .eq('id_empresa', sucursal.id_empresa)
             .single();
         
@@ -1026,11 +1026,10 @@ const recuperarVentaGuardada = async (req, res) => {
 
         // Encabezado
         doc.font('Helvetica-Bold')
-            .fontSize(16)
-            .text(empresa.nombre, { align: 'center' })
             .fontSize(12)
-            .text('Casa Matriz', { align: 'center' })
-            .text(sucursal.direccion, { align: 'center' })
+            .text(empresa.nombre, { align: 'center' })
+            .fontSize(8)
+            .text(empresa.direccion, { align: 'center' })
             .text(`Tel: ${empresa.telefono_principal}`, { align: 'center' })
             .text(`Email: ${empresa.correo_principal}`, { align: 'center' })
             .moveDown(0.5);

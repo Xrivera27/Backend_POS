@@ -1,3 +1,65 @@
+const verificarDuplicados = async (req, res) => {
+  const supabase = req.supabase;
+  const id_usuario = req.user.id_usuario;
+
+  try {
+    const { nombre_usuario, correo } = req.body;
+
+    // Verificar duplicados excluyendo el usuario actual
+    const { data, error } = await supabase
+      .from('Usuarios')
+      .select('nombre_usuario, correo')
+      .or(`nombre_usuario.eq.${nombre_usuario},correo.eq.${correo}`)
+      .neq('id_usuario', id_usuario);
+
+    if (error) {
+      return res.status(500).json({ error: 'Error al verificar duplicados' });
+    }
+
+    const duplicados = [];
+    if (data && data.length > 0) {
+      data.forEach(user => {
+        if (user.nombre_usuario === nombre_usuario) {
+          duplicados.push('nombre_usuario');
+        }
+        if (user.correo === correo) {
+          duplicados.push('correo');
+        }
+      });
+    }
+
+    return res.json({ duplicados: duplicados.length > 0 ? duplicados : null });
+  } catch (error) {
+    console.error('Error al verificar duplicados:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+const verificarPassword = async (req, res) => {
+  const supabase = req.supabase;
+  const id_usuario = req.user.id_usuario;
+
+  try {
+    const { contraseña } = req.body;
+
+    const { data, error } = await supabase
+      .from('Usuarios')
+      .select('contraseña')
+      .eq('id_usuario', id_usuario)
+      .single();
+
+    if (error) {
+      return res.status(500).json({ error: 'Error al verificar la contraseña' });
+    }
+
+    const isValid = data.contraseña === contraseña;
+    return res.json({ isValid });
+  } catch (error) {
+    console.error('Error al verificar la contraseña:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
 const updateUsuario = async (req, res) => {
   const supabase = req.supabase;
 
@@ -32,7 +94,32 @@ const updateUsuario = async (req, res) => {
       correo 
     } = req.body;
 
-    console.log("Datos recibidos del frontend:", req.body); // Para depuración
+    // Verificar duplicados de nombre_usuario y correo
+    const { data: duplicateCheck, error: duplicateError } = await supabase
+      .from('Usuarios')
+      .select('nombre_usuario, correo')
+      .or(`nombre_usuario.eq.${nombre_usuario},correo.eq.${correo}`)
+      .neq('id_usuario', id_usuario);
+
+    if (duplicateError) {
+      return res.status(500).json({ error: 'Error al verificar duplicados' });
+    }
+
+    const duplicados = [];
+    if (duplicateCheck && duplicateCheck.length > 0) {
+      duplicateCheck.forEach(user => {
+        if (user.nombre_usuario === nombre_usuario) {
+          duplicados.push('nombre_usuario');
+        }
+        if (user.correo === correo) {
+          duplicados.push('correo');
+        }
+      });
+
+      if (duplicados.length > 0) {
+        return res.status(400).json({ error: 'Datos duplicados', duplicados });
+      }
+    }
 
     // Verificar que la contraseña actual coincida con la almacenada
     if (contraseña && contraseña !== existingUser.contraseña) {
@@ -51,14 +138,11 @@ const updateUsuario = async (req, res) => {
 
     // Si se proporciona una nueva contraseña, verificamos y la añadimos
     if (contraseña_nueva) {
-      // Usar trim() para eliminar espacios en blanco
       if (!contraseña_confirm || contraseña_nueva.trim() !== contraseña_confirm.trim()) {
         return res.status(400).json({ message: 'Las contraseñas nuevas no coinciden.' });
       }
-      updatedData.contraseña = contraseña_nueva.trim(); // Añadir nueva contraseña, recortada
+      updatedData.contraseña = contraseña_nueva.trim();
     }
-
-   
 
     // Actualizar los datos del usuario en la base de datos
     const { data, error } = await supabase
@@ -80,4 +164,6 @@ const updateUsuario = async (req, res) => {
 
 module.exports = {
   updateUsuario,
+  verificarDuplicados,
+  verificarPassword
 };

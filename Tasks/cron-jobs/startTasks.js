@@ -5,6 +5,7 @@ const {cron: dscPromos} = require('./desactivarPromociones.js');
 const {cron: actPromos} = require('./activarPromociones.js');
 const {cron: alertPromProduct} = require('./alertPromProduct.js');
 const alertPromCategory = require('./alertPromCategory.js');
+const {cron: desSar} = require('./desactivarSAR.js');
 
 function startCrons(){
     rBsinGuardar;
@@ -13,6 +14,7 @@ function startCrons(){
     actPromos;
     alertPromProduct;
     alertPromCategory;
+    desSar;
 }
 
 module.exports = startCrons;

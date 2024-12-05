@@ -389,7 +389,7 @@ const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
 
     const promesas = 
     idsUsar.map(async (i) => {
-        const {data: registro, error} = await supabase.rpc('obtener_reportes_por_usuario_fecha', 
+        const {data: registro, error} = await supabase.rpc('obtener_resumen_ventas_usuario_canceladas', 
           {p_id_usuario: i.id_usuario, p_fecha_inicio: inicioTimestampZ, p_fecha_fin: finTimestampZ})
         if(error){
           throw error;
@@ -402,7 +402,7 @@ const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
       await Promise.all(promesas);
       console.log(datosReporte);
 
-    res.status(200).json(datosReporte.filter(d => d.total !== 0));
+    res.status(200).json(datosReporte.filter(d => d.total !== 0 && d.total_canceladas !== 0));
 
   } catch (error) {
     console.error('Ocurrio un error: ', error);
@@ -431,7 +431,7 @@ const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
     if(id_rol === 4){
 
       const id_empresa_param = await getEmpresaId(id_usuario, supabase);
-      const {data: registros, error} = await supabase.rpc('obtener_reportes_por_clientes_empresa', 
+      const {data: registros, error} = await supabase.rpc('obtener_reportes_por_clientes_empresa_canceladas', 
         {p_id_empresa: id_empresa_param, p_fecha_inicio: inicioTimestampZ, p_fecha_fin: finTimestampZ})
       if(error){
         throw error;

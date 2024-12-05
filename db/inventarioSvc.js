@@ -46,8 +46,7 @@ const postInventarioEmpresas = async (id_producto, id_empresa, supabase) => {
 
 const postFirstinventario = async (id_producto, id_sucursal, supabase) => {
     try {
-        console.log('sucursales');
-        console.log(id_sucursal);
+
         const { data: inventario, error } = await supabase
         .from('inventarios')
         .insert({
@@ -58,7 +57,6 @@ const postFirstinventario = async (id_producto, id_sucursal, supabase) => {
         if (error) {
             throw 'Error al intentar agregar producto a inventario';
         }
-        console.log(inventario);
 
         return {inventario,
 resultado: true

@@ -476,8 +476,6 @@ const recuperarVentaGuardada = async (req, res) => {
             throw 'este usuario no tiene una caja abierta!';
          }
 
-         console.log(caja);
-
         const datosCodigoFacturaCaja = {
             id_sucursal: id_sucursal,
             num_factura: num_factura,

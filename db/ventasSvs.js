@@ -1,5 +1,6 @@
 const { obtenerPromos } = require('./promocionesSvs.js');
 const { necesitaAlertStockMin, necesitaAlertStockMax } = require('./alerts.js');
+const { desactivarSarRango } = require('./sarSvs.js');
 
 const calculos = {
     async calcularDetallesVenta(id_venta, datosCodigoFacturaCaja, productos, id_usuario, supabase) {
@@ -282,6 +283,8 @@ const calculos = {
                 console.error("Error al ejecutar la función 'crear_factura_sar':", error.message);
                 throw new Error("No se pudo crear la factura SAR. Verifique los datos e intente de nuevo.");
             }
+
+            await desactivarSarRango(id_sucursal, supabase);
     
             return true;
     

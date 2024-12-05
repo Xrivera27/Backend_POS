@@ -36,6 +36,7 @@ const reporteVentasController = {
       const id_usuario = req.user.id_usuario;
 
       console.log('5. Obteniendo sucursal del usuario');
+      console.log('Aqui esta el error');
       const sucursalUsuario = await getSucursalesbyUser(id_usuario, req.supabase);
       console.log('6. Sucursal del usuario:', sucursalUsuario);
 
@@ -274,6 +275,7 @@ const getProductosOfInventorySucursal = async (req, res) => {
  
 
   try {
+    console.log('aqui esta el error');
     const id_sucursal_param = await getSucursalesbyUser(id_usuario, supabase);
       const {data: productos, error} = await supabase.rpc('view_inventory_only_sucursal', {id_sucursal_param})
       .select('*');
@@ -295,6 +297,7 @@ const getUsuarioOfSucursal = async (req, res) => {
     const supabase = req.supabase;
 
     const id_usuario = req.params.id_usuario;
+    console('aqui esta el error');
     const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
 
     const promesas = [
@@ -441,6 +444,7 @@ const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
 
     }
     else{
+
       const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
 
  

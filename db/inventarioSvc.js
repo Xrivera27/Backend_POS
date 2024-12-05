@@ -1,5 +1,7 @@
 //Funciones relacionadas con inventario para que no esten en controller 
 
+const { getSucursalesbyEmpresa } = require('./empresaSvc.js');
+
 const getInventario = async (id_producto, id_sucursal, supabase) => {
     try {
 
@@ -23,6 +25,17 @@ const getInventario = async (id_producto, id_sucursal, supabase) => {
         throw new Error("Hubo un error inesperado al obtener el inventario.");
     }
 };
+
+const postInventarioEmpresas = async (id_producto, id_sucursales, supabase) => {
+    try {
+       const promesas = id_sucursales.map(async (s) => {
+        
+       });
+
+    } catch (error) {
+        throw new Error(error);
+    }
+}
 
 
 const postFirstinventario = async (id_producto, id_sucursal, supabase) => {

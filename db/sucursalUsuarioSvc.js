@@ -148,8 +148,6 @@ const getDatosSarSucursal = async (id_usuario, supabase) => {
     }
 };
 
-
-
 const insertarRelacion = async (id_usuario, id_sucursal, supabase) => {
 
     try {

@@ -444,7 +444,7 @@ const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
       const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
 
  
-      const {data: registros, error} = await supabase.rpc('obtener_reportes_por_clientes_sucursal', 
+      const {data: registros, error} = await supabase.rpc('obtener_reportes_por_clientes_sucursal_canceladas', 
             {p_id_sucursal: id_sucursal, p_fecha_inicio: inicioTimestampZ, p_fecha_fin: finTimestampZ})
           if(error){
             throw error;
@@ -478,7 +478,7 @@ const inicioTimestampZ = new Date(fechaInicio + 'T00:00:00+00:00').toISOString()
 const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
 
       const id_empresa_param = await getEmpresaId(id_usuario, supabase);
-      const {data: registros, error} = await supabase.rpc('obtener_reportes_por_sucursales_admin', 
+      const {data: registros, error} = await supabase.rpc('obtener_reportes_por_sucursales_admin_canceladas', 
         {p_id_empresa: id_empresa_param, p_fecha_inicio: inicioTimestampZ, p_fecha_fin: finTimestampZ})
       if(error){
         throw error;

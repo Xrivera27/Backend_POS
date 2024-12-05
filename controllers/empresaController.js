@@ -8,6 +8,7 @@ const register = async (req, res) => {
     rtn,
     apellido_usuario,
     id_categoria,
+    direccion,
     correo_principal,
     telefono_principal,
     usa_SAR
@@ -26,6 +27,7 @@ const register = async (req, res) => {
         nombre: nombre,
         id_categoria: id_categoria,
         rtn: rtn,
+        direccion: `${direccion} EDITAR`,
         correo_principal: correo_principal,
         telefono_principal: telefono_principal,
         usa_SAR: usa_SAR
@@ -45,7 +47,7 @@ const register = async (req, res) => {
       nombre_administrativo: `${nombre} Sucursal Principal`,
       id_empresa: empresa[0].id_empresa,
       correo: correo_principal,
-      direccion: `EDITAR`,
+      direccion: `${direccion} EDITAR`,
       telefono: telefono_principal,
       estado: true
     }).select('id_sucursal');
@@ -103,7 +105,7 @@ const getDatosEmpresa = async(req, res) => {
     const id_empresa = await getEmpresaId(id_usuario, supabase);
 
     const { data: empresa, error } = await supabase.from('Empresas')
-    .select('nombre, correo_principal, telefono_principal')
+    .select('nombre, correo_principal, telefono_principal, direccion')
     .eq('id_empresa', id_empresa)
     .single();
 

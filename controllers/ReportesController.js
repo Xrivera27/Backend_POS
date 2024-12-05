@@ -508,7 +508,7 @@ const getEmpleadoReporteDesglose = async (req, res) => {
   const inicioTimestampZ = new Date(fechaInicio + 'T00:00:00+00:00').toISOString();
   const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
     const { data: facturas, error } = await supabase.from('Ventas')
-    .select('id_usuario, facturas(*, factura_SAR(*))')
+    .select('id_usuario, estado, facturas(*, factura_SAR(*))')
     .lte('created_at', finTimestampZ)
     .gte('created_at', inicioTimestampZ)
     .eq('id_usuario', id_empleado);
@@ -537,7 +537,8 @@ const getEmpleadoReporteDesglose = async (req, res) => {
         gravado_15: f.facturas[0].gravado_15,
         gravado_18: f.facturas[0].gravado_18,
         total_isv: f.facturas[0].total_ISV,
-        total: f.facturas[0].total
+        total: f.facturas[0].total,
+        estado: f.estado
       });
     }
   });
@@ -564,7 +565,7 @@ const getClientesReportesDesglose = async (req, res) => {
   const inicioTimestampZ = new Date(fechaInicio + 'T00:00:00+00:00').toISOString();
   const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
     const { data: facturas, error } = await supabase.from('Ventas')
-    .select('id_usuario, facturas(*, factura_SAR(*))')
+    .select('id_usuario, estado, facturas(*, factura_SAR(*))')
     .lte('created_at', finTimestampZ)
     .gte('created_at', inicioTimestampZ)
     .eq('id_cliente', id_cliente);
@@ -593,7 +594,8 @@ const getClientesReportesDesglose = async (req, res) => {
         gravado_15: f.facturas[0].gravado_15,
         gravado_18: f.facturas[0].gravado_18,
         total_isv: f.facturas[0].total_ISV,
-        total: f.facturas[0].total
+        total: f.facturas[0].total,
+        estado: f.estado
       });
     }
   });
@@ -620,7 +622,7 @@ const getSucursalReportesDesglose = async (req, res) => {
   const inicioTimestampZ = new Date(fechaInicio + 'T00:00:00+00:00').toISOString();
   const finTimestampZ = new Date(fechaFin + 'T23:59:59+00:00').toISOString();
     const { data: facturas, error } = await supabase.from('Ventas')
-    .select('id_usuario, facturas(*, factura_SAR(*))')
+    .select('id_usuario, estado, facturas(*, factura_SAR(*))')
     .lte('created_at', finTimestampZ)
     .gte('created_at', inicioTimestampZ)
     .eq('id_sucursal', id_sucursal);
@@ -649,7 +651,8 @@ const getSucursalReportesDesglose = async (req, res) => {
         gravado_15: f.facturas[0].gravado_15,
         gravado_18: f.facturas[0].gravado_18,
         total_isv: f.facturas[0].total_ISV,
-        total: f.facturas[0].total
+        total: f.facturas[0].total,
+        estado: f.estado
       });
     }
   });

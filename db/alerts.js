@@ -32,11 +32,11 @@ const getAlertCeo = async(id_usuario, supabase) => {
                     break;
                 
                 case 'promocion_producto_entrante':
-                    element.name = 'Promocion de Producto';
+                    element.name = 'Promoción de Producto';
                     break;
 
                 case 'promocion_categoria_entrante':
-                    element.name = 'Promocion de Categoria';
+                    element.name = 'Promoción de Categoria';
                     break;
                 
                 default: console.error('Ocurrio un error al mostrar una alerta', 'Tipo alerta no existe');
@@ -117,11 +117,11 @@ const { data: id_stocks, error: errorStocks } = await supabase.from('alerts_stoc
                     break;
                 
                 case 'promocion_producto_entrante':
-                    element.name = 'Promocion de Producto';
+                    element.name = 'Promoción de Producto';
                     break;
 
                 case 'promocion_categoria_entrante':
-                    element.name = 'Promocion de Categoria';
+                    element.name = 'Promoción de Categoria';
                     break;
                 
                 default: console.error('Ocurrio un error al mostrar una alerta', 'Tipo alerta no existe');
@@ -314,7 +314,7 @@ const crearAlertStockMaximo = async (producto, id_usuario, stock_max, stock_actu
     .insert({
         tipo: 'stock_maximo',
         puntaje: Math.trunc(puntaje),
-        descripcion: `${producto.nombre} tiene ${stock_actual} unidades disponibles en el inventario y el stock maximo es: ${stock_max}`,
+        descripcion: `${producto.nombre} tiene ${stock_actual} unidades disponibles en el inventario y el stock máximo es: ${stock_max}`,
         id_empresa: id_empresa
     })
     .select('id_alert');

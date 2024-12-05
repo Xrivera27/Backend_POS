@@ -2,6 +2,98 @@ const { getSucursalesbyUser} = require('../db/sucursalUsuarioSvc');
 const PDFDocument = require('pdfkit');
 const { format } = require('date-fns');
 
+const obtenerVentasCeo = async (req, res) => {
+    const { supabase } = req;
+    const { id_sucursal } = req.params;
+
+    try {
+
+        const { data: ventas, error: errorVentas } = await supabase
+        .from('Ventas')
+        .select(`
+            id_venta,
+            created_at,
+            sub_total,
+            estado,
+            id_usuario,
+            id_sucursal,
+            descripcion,
+            Usuarios (
+                nombre,
+                apellido
+            ),
+            Clientes (
+                nombre_completo
+            )
+        `)
+        .eq('id_sucursal', id_sucursal)
+        .order('created_at', { ascending: false });
+
+        if (errorVentas) throw new Error('Error al obtener las ventas');
+
+        const { data: facturas, error: errorFacturas } = await supabase
+            .from('facturas')
+            .select('*')
+            .in('id_venta', ventas.map(v => v.id_venta));
+
+        if (errorFacturas) throw new Error('Error al obtener las facturas');
+
+        const { data: sarData, error: errorSAR } = await supabase
+            .from('factura_SAR')
+            .select('numero_factura_SAR, numero_CAI, id_factura')
+            .in('id_factura', facturas.map(f => f.id_factura));
+
+        if (errorSAR) throw new Error('Error al obtener datos SAR');
+
+        const facturasMap = facturas.reduce((acc, factura) => {
+            acc[factura.id_venta] = factura;
+            return acc;
+        }, {});
+
+        const sarMap = sarData.reduce((acc, sar) => {
+            acc[sar.id_factura] = sar;
+            return acc;
+        }, {});
+
+        const ventasFormateadas = ventas.map(venta => {
+            const facturaData = facturasMap[venta.id_venta];
+            const sarInfo = facturaData ? sarMap[facturaData.id_factura] : null;
+        
+            return {
+                codigo: sarInfo?.numero_factura_SAR || 'N/A',
+                nombre: venta.Usuarios ? `${venta.Usuarios.nombre} ${venta.Usuarios.apellido}` : 'N/A',
+                cliente: venta.Clientes ? venta.Clientes.nombre_completo : 'Consumidor Final',
+                subtotal: venta.sub_total || 0,
+                descuento: facturaData?.descuento || 0,
+                total: facturaData?.total || 0,
+                total_impuesto: facturaData ? (facturaData.ISV_15 || 0) + (facturaData.ISV_18 || 0) : 0,
+                fechaHora: venta.created_at,
+                numero_factura: sarInfo?.numero_factura_SAR || 'N/A',
+                cai: sarInfo?.numero_CAI || 'N/A',
+                id_venta: venta.id_venta,
+                id_factura: facturaData?.id_factura,
+                id_usuario: venta.id_usuario,
+                estado: venta.estado || 'Pagada',
+                id_sucursal: venta.id_sucursal,
+                descripcion: venta.descripcion
+            };
+        }).filter(v => v !== null);
+
+        res.status(200).json({
+            success: true,
+            data: ventasFormateadas,
+            message: 'Ventas obtenidas exitosamente'
+        });
+
+    } catch (error) {
+        console.error('Error al obtener ventas:', error);
+        res.status(error.message === 'Usuario no autenticado' ? 401 : 500).json({
+            success: false,
+            message: error.message || 'Error al obtener las ventas'
+        });
+    }
+};
+
 const obtenerVentas = async (req, res) => {
     const { supabase } = req;
 
@@ -973,6 +1065,7 @@ const generarReporteCancelacion = async (req, res) => {
 };
 
 module.exports = {
+    obtenerVentasCeo,
     obtenerVentas,
     obtenerDetalleVenta,
     generarFactura,

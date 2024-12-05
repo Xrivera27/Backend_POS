@@ -1,18 +1,13 @@
 const { getSucursalesbyUser } = require('../db/sucursalUsuarioSvc');
+
 const PDFDocument = require('pdfkit');
 const { format } = require('date-fns');
 
-const obtenerCompras = async (req, res) => {
+const obtenerComprasCeo = async (req, res) => {
     const { supabase } = req;
+    const { id_sucursal } = req.params;
 
     try {
-        const id_usuario = req.user?.id || req.user?.id_usuario;
-        if (!id_usuario) {
-            throw new Error('Usuario no autenticado');
-        }
-
-        // Obtener la sucursal del usuario
-        const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
         console.log('1. Sucursal obtenida:', id_sucursal);
 
         // Obtener todas las compras
@@ -26,6 +21,7 @@ const obtenerCompras = async (req, res) => {
                 estado_pago,
                 metodo_pago,
                 id_usuario,
+                id_sucursal,
                 Usuarios (
                     nombre,
                     apellido
@@ -64,7 +60,90 @@ const obtenerCompras = async (req, res) => {
             fechaHora: compra.created_at,
             estado: compra.estado_pago,
             metodo_pago: compra.metodo_pago,
-            id_compra: compra.id_compra
+            id_compra: compra.id_compra,
+            id_sucursal: compra.id_sucursal
+        }));
+
+        res.status(200).json({
+            success: true,
+            data: comprasFormateadas,
+            message: 'Compras obtenidas exitosamente'
+        });
+
+    } catch (error) {
+        console.error('Error al obtener compras:', error);
+        res.status(error.message === 'Usuario no autenticado' ? 401 : 500).json({
+            success: false,
+            message: error.message || 'Error al obtener las compras'
+        });
+    }
+};
+
+const obtenerCompras = async (req, res) => {
+    const { supabase } = req;
+
+    try {
+        const id_usuario = req.user?.id || req.user?.id_usuario;
+        if (!id_usuario) {
+            throw new Error('Usuario no autenticado');
+        }
+
+        // Obtener la sucursal del usuario
+        const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+        console.log('1. Sucursal obtenida:', id_sucursal);
+
+        // Obtener todas las compras
+        const { data: compras, error: errorCompras } = await supabase
+            .from('Compras')
+            .select(`
+                id_compra,
+                created_at,
+                referencia_pago,
+                total,
+                estado_pago,
+                metodo_pago,
+                id_usuario,
+                id_sucursal,
+                Usuarios (
+                    nombre,
+                    apellido
+                ),
+                proveedores (
+                    nombre,
+                    correo
+                )
+            `)
+            .eq('id_sucursal', id_sucursal)
+            .order('created_at', { ascending: false });
+
+        if (errorCompras) throw new Error('Error al obtener las compras');
+
+        // Obtener todos los detalles de compras de una vez
+        const { data: detalles, error: errorDetalles } = await supabase
+            .from('Compras_detalles')
+            .select('id_compra, cantidad')
+            .in('id_compra', compras.map(c => c.id_compra));
+
+        if (errorDetalles) throw new Error('Error al obtener los detalles');
+
+        // Crear mapa de cantidades totales por compra
+        const cantidadesMap = detalles.reduce((acc, detalle) => {
+            acc[detalle.id_compra] = (acc[detalle.id_compra] || 0) + detalle.cantidad;
+            return acc;
+        }, {});
+
+        // Formatear compras
+        const comprasFormateadas = compras.map(compra => ({
+            codigo: compra.referencia_pago,
+            nombre: compra.Usuarios ? `${compra.Usuarios.nombre} ${compra.Usuarios.apellido}` : 'N/A',
+            proveedor: compra.proveedores ? compra.proveedores.nombre : 'N/A',
+            cantidad: cantidadesMap[compra.id_compra] || 0,
+            total: compra.total || 0,
+            fechaHora: compra.created_at,
+            estado: compra.estado_pago,
+            metodo_pago: compra.metodo_pago,
+            id_compra: compra.id_compra,
+            id_sucursal: compra.id_sucursal
         }));
 
         res.status(200).json({
@@ -384,6 +463,7 @@ const actualizarEstadoCompra = async (req, res) => {
 };
 
 module.exports = {
+    obtenerComprasCeo,
     obtenerCompras,
     obtenerDetalleCompra,
     registrarCompra,

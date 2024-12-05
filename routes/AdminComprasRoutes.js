@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { 
+    obtenerComprasCeo,
     obtenerCompras, 
     obtenerDetalleCompra, 
     registrarCompra,
@@ -12,6 +13,7 @@ const authMiddleware = require('../middlewares/loginMiddleware');
 
 // Rutas para compras
 router.get('/compras', authMiddleware, obtenerCompras);
+router.get('/compras-ceo/:id_sucursal', obtenerComprasCeo);
 router.get('/compras/:id_compra', authMiddleware, obtenerDetalleCompra);
 router.post('/compras', authMiddleware, registrarCompra);
 router.get('/compras/reporte', authMiddleware, generarReporteCompras);

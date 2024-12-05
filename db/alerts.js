@@ -579,4 +579,4 @@ const eliminarPromoAlertCategory = async (id_promocion, supabase) => {
     }
 }
 
-module.exports = { necesitaAlertStockMax, crearAlertPromoProduct, crearAlertPromoCategory, eliminarPromoAlert, eliminarPromoAlertCategory, getAlertCeo, getAlertAmdministrador }
+module.exports = { crearAlertStockMinimo, necesitaAlertStockMin, necesitaAlertStockMax, crearAlertPromoProduct, crearAlertPromoCategory, eliminarPromoAlert, eliminarPromoAlertCategory, getAlertCeo, getAlertAmdministrador }

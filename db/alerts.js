@@ -162,7 +162,7 @@ const necesitaAlertStockMin = async (producto, id_usuario, supabase) => {
             await crearAlertStockMinimo(producto, id_usuario, inventario.stock_min, inventario.stock_actual, supabase);
             return;
         }
-        await eliminarProductoAlert(producto.id_producto, supabase);
+        await eliminarProductoAlert(producto.id_producto, id_sucursal, 'stock_minimo', supabase);
 
 
     } catch (error) {
@@ -172,9 +172,10 @@ const necesitaAlertStockMin = async (producto, id_usuario, supabase) => {
 
 const crearAlertStockMinimo = async (producto, id_usuario, stock_min, stock_actual, supabase) => {
     try {
-        const { resultado } = await eliminarProductoAlert(producto.id_producto, supabase);
+        
         const id_empresa = await getEmpresaId(id_usuario, supabase);
         const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+        const { resultado } = await eliminarProductoAlert(producto.id_producto, id_sucursal, 'stock_minimo', supabase);
 
     if(!resultado){
         throw 'No se puede generar nueva alerta por problemas del servidor al eliminar una alerta anterior';
@@ -226,21 +227,39 @@ const generarPuntajeStockMin = (stock_actual, stock_min) => {
 
 }
 
-const eliminarProductoAlert = async (id_producto, supabase) => {
+const eliminarProductoAlert = async (id_producto, id_sucursal, tipo, supabase) => {
     try {
-        const {  data: id_alerta, error: errorAlerta } = await supabase.from('alerts_stocks')
-        .select('id_alert')
-        .eq('id_producto', id_producto);
 
-        if(id_alerta.length === 0){
-            return {
-                resultado: true
-            }
+        const {  data: id_alerta_exp, error: errorAlerta_exp } = await supabase.from('alerts_stocks')
+        .select('id_alert')
+        .eq('id_producto', id_producto)
+        .eq('id_sucursal', id_sucursal);
+
+        if(id_alerta_exp.length === 0 ){
+
+            return { resultado: true }
+        }
+
+        if(errorAlerta_exp){
+            console.log('error al obtener alerta stock');
+            throw errorAlerta_exp;
+        }
+
+        const {  data: id_alerta, error: errorAlerta } = await supabase.from('alerts')
+        .select('id_alert')
+        .eq('id_alert', id_alerta_exp[0].id_alert)
+        .eq('tipo', tipo);
+
+        if(id_alerta_exp.length === 0 ){
+
+            return { resultado: true }
         }
 
         const id_alert_selected = id_alerta[0].id_alert;
+        console.log(id_alerta_exp)
 
         if(errorAlerta){
+            console.log('error al obtener alerta general');
             throw errorAlerta;
         }
 
@@ -249,12 +268,14 @@ const eliminarProductoAlert = async (id_producto, supabase) => {
         .eq('id_alert', id_alert_selected);
 
         if(errorStock){
+            console.log('error al obtener alerta stock 2');
             throw errorStock;
         }
 
         const { error: errorAlert } = await supabase.from('alerts')
         .delete()
-        .eq('id_alert', id_alert_selected);
+        .eq('id_alert', id_alert_selected)
+        .eq('tipo', tipo);
 
         if(errorAlert){
             throw errorAlert;
@@ -276,6 +297,7 @@ const necesitaAlertStockMax = async (producto, id_usuario, supabase) => {
     try {
         const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
 
+
         const { data: inventario, error } = await supabase.from('inventarios')
         .select('stock_max, stock_actual')
         .eq('id_producto', producto.id_producto)
@@ -286,29 +308,36 @@ const necesitaAlertStockMax = async (producto, id_usuario, supabase) => {
             throw error;
         }
 
-        if(inventario.stock_actual >= inventario.stock_max ){
-            await crearAlertStockMaximo(producto, id_usuario, inventario.stock_max, inventario.stock_actual, supabase);
+        if((inventario.stock_actual >= inventario.stock_max)  && inventario.stock_max !== null ){
+
+            await crearAlertStockMaximo(producto, id_usuario, inventario.stock_max, inventario.stock_actual, id_sucursal, supabase);
             return;
         }
-
-        await eliminarProductoAlert(producto.id_producto, supabase);
-
+        else{
+            await eliminarProductoAlert(producto.id_producto, id_sucursal, 'stock_maximo', supabase);
+        }
+       
     } catch (error) {
         console.error('Ocurrio un error: ', error);
     }
 }
 
-const crearAlertStockMaximo = async (producto, id_usuario, stock_max, stock_actual, supabase) => {
+const crearAlertStockMaximo = async (producto, id_usuario, stock_max, stock_actual, id_sucursal, supabase) => {
     try {
-        const { resultado } = await eliminarProductoAlert(producto.id_producto, supabase);
+
+        const { resultado } = await eliminarProductoAlert(producto.id_producto, id_sucursal, 'stock_maximo', supabase);
+
         const id_empresa = await getEmpresaId(id_usuario, supabase);
-        const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+        console.log(id_empresa);
+
 
     if(!resultado){
         throw 'No se puede generar nueva alerta por problemas del servidor al eliminar una alerta anterior';
     }
 
     const puntaje = 20;
+    console.log(puntaje);
+
 
     const { data: alert, error: alertError } = await supabase.from('alerts')
     .insert({
@@ -322,19 +351,29 @@ const crearAlertStockMaximo = async (producto, id_usuario, stock_max, stock_actu
     if(alertError){
         throw alertError;
     }
+    console.log('DAOTS');
+console.log( alert[0].id_alert);
+console.log(producto.id_producto);
+console.log(producto.id_producto);
+console.log(id_sucursal);
+console.log(stock_actual);
+console.log(stock_max);
+console.log('DAOTS');
 
-    const { error: errorStock } = await supabase.from('alerts_stocks')
+    const { data: alertGeneral, error: errorStock } = await supabase.from('alerts_stocks')
     .insert({
         id_alert: alert[0].id_alert,
         id_producto: producto.id_producto,
         id_sucursal: id_sucursal,
         stock_actual: stock_actual,
         stock_limite: stock_max
-    });
+    })
+    .select('*');
 
     if(errorStock){
         throw errorStock;
     }
+console.log(alertGeneral);
 
     } catch (error) {
         console.error('Ocurrio un error: ', error);
@@ -540,4 +579,4 @@ const eliminarPromoAlertCategory = async (id_promocion, supabase) => {
     }
 }
 
-module.exports = { crearAlertStockMinimo, necesitaAlertStockMin, necesitaAlertStockMax, crearAlertPromoProduct, crearAlertPromoCategory, eliminarPromoAlert, eliminarPromoAlertCategory, getAlertCeo, getAlertAmdministrador }
+module.exports = { necesitaAlertStockMax, crearAlertPromoProduct, crearAlertPromoCategory, eliminarPromoAlert, eliminarPromoAlertCategory, getAlertCeo, getAlertAmdministrador }

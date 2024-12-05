@@ -141,7 +141,7 @@ const calculos = {
                 }
             }
 
-            necesitaAlertStockMin(elementoProducto, id_usuario, supabase);
+          //  necesitaAlertStockMin(elementoProducto, id_usuario, supabase);
             necesitaAlertStockMax(elementoProducto, id_usuario, supabase);
 
             return { totalDetalle, precio_usar, descuento }

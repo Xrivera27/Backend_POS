@@ -231,76 +231,156 @@ const generarFactura = async (req, res) => {
     const formatRangoFacturacion = (numero) => {
         return `${numero.slice(0,3)}-${numero.slice(3,6)}-${numero.slice(6,8)}-${numero.slice(8)}`;
     };
+
+    const numeroALetras = (numero) => {
+        const unidades = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
+        const decenas = ['', 'DIEZ', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
+        const especiales = {
+            11: 'ONCE', 12: 'DOCE', 13: 'TRECE', 14: 'CATORCE', 15: 'QUINCE',
+            16: 'DIECISEIS', 17: 'DIECISIETE', 18: 'DIECIOCHO', 19: 'DIECINUEVE',
+            21: 'VEINTIUNO', 22: 'VEINTIDOS', 23: 'VEINTITRES', 24: 'VEINTICUATRO', 25: 'VEINTICINCO',
+            26: 'VEINTISEIS', 27: 'VEINTISIETE', 28: 'VEINTIOCHO', 29: 'VEINTINUEVE'
+        };
+        const centenas = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
+
+        const convertirMiles = (n) => {
+            if (n === 0) return '';
+            if (n === 1) return 'MIL ';
+            return unidades[n] + ' MIL ';
+        };
+
+        const convertirCentenas = (n) => {
+            if (n === 0) return '';
+            if (n === 100) return 'CIEN ';
+            return centenas[Math.floor(n / 100)] + ' ';
+        };
+
+        const convertirDecenas = (n) => {
+            if (n === 0) return '';
+            const decena = Math.floor(n / 10);
+            const unidad = n % 10;
+            
+            if (n < 10) return unidades[n] + ' ';
+            if (especiales[n]) return especiales[n] + ' ';
+            if (unidad === 0) return decenas[decena] + ' ';
+            if (decena === 2) return 'VEINTI' + unidades[unidad].toLowerCase() + ' ';
+            return decenas[decena] + ' Y ' + unidades[unidad] + ' ';
+        };
+
+        const partes = Number(numero).toFixed(2).split('.');
+        const entero = parseInt(partes[0]);
+        const decimal = parseInt(partes[1]);
+
+        if (entero === 0) return 'CERO LEMPIRAS CON ' + decimal + '/100';
+
+        let resultado = '';
+        
+        const miles = Math.floor(entero / 1000);
+        if (miles > 0) resultado += convertirMiles(miles);
+
+        const centena = entero % 1000;
+        if (centena > 0) {
+            resultado += convertirCentenas(centena);
+            const decena = centena % 100;
+            resultado += convertirDecenas(decena);
+        }
+
+        resultado += 'LEMPIRAS CON ' + decimal + '/100';
+        return resultado.trim();
+    };
   
     try {
         if (!id_venta || !id_usuario) {
             throw new Error('Parámetros incompletos');
         }
 
-        const { data: venta, error: ventaError } = await supabase
+        console.log('Iniciando búsqueda de venta con ID:', id_venta);
+
+        // Primero verificamos si la venta existe
+        const { data: ventaBasica, error: ventaBasicaError } = await supabase
             .from('Ventas')
-            .select(`
-                *,
-                Clientes (
-                    nombre_completo,
-                    rtn,
-                    direccion
-                ),
-                facturas!inner (
-                    *,
-                    factura_SAR!inner (
-                        numero_factura_SAR,
-                        numero_CAI
-                    )
-                ),
-                Usuarios!inner (
-                    nombre,
-                    apellido
-                )
-            `)
+            .select('*')
             .eq('id_venta', id_venta)
             .single();
 
-        if (ventaError || !venta) {
-            console.error('Error al obtener venta:', ventaError);
-            throw new Error('Error al obtener datos de venta');
-        }
-        console.log('Datos de venta:', venta);
-        console.log('Datos completos de factura_SAR:', {
-            numero_factura: venta.facturas[0].factura_SAR[0].numero_factura_SAR,
-            cai: venta.facturas[0].factura_SAR[0].numero_CAI,
-            datos_completos: venta.facturas[0].factura_SAR
-        });
-
-        const id_sucursal = venta.id_sucursal;
-        if (!id_sucursal) {
-            throw new Error('Sucursal no encontrada en la venta');
+        if (ventaBasicaError) {
+            console.error('Error al verificar venta básica:', ventaBasicaError);
+            throw new Error(`No se encontró la venta con ID: ${id_venta}`);
         }
 
+        console.log('Venta básica encontrada:', ventaBasica);
+
+        // Obtener factura
+        const { data: factura, error: facturaError } = await supabase
+            .from('facturas')
+            .select('*, factura_SAR (*)')
+            .eq('id_venta', id_venta)
+            .single();
+
+        if (facturaError) {
+            console.error('Error al obtener factura:', facturaError);
+            throw new Error('Error al obtener datos de factura');
+        }
+
+        console.log('Factura encontrada:', factura);
+
+        // Obtener cliente si existe
+        let cliente = null;
+        if (ventaBasica.id_cliente) {
+            const { data: clienteData, error: clienteError } = await supabase
+                .from('Clientes')
+                .select('*')
+                .eq('id_cliente', ventaBasica.id_cliente)
+                .single();
+
+            if (!clienteError) {
+                cliente = clienteData;
+                console.log('Cliente encontrado:', cliente);
+            } else {
+                console.log('Cliente no encontrado, se usará Consumidor Final');
+            }
+        }
+
+        // Obtener usuario
+        const { data: usuario, error: usuarioError } = await supabase
+            .from('Usuarios')
+            .select('nombre, apellido')
+            .eq('id_usuario', ventaBasica.id_usuario)
+            .single();
+
+        if (usuarioError) {
+            console.error('Error al obtener usuario:', usuarioError);
+            throw new Error('Error al obtener datos del usuario');
+        }
+
+        console.log('Usuario encontrado:', usuario);
+
+        // Obtener sucursal y empresa
         const { data: sucursal, error: sucursalError } = await supabase
             .from('Sucursales')
-            .select('nombre_administrativo, telefono, correo, id_empresa')
-            .eq('id_sucursal', id_sucursal)
+            .select(`
+                *,
+                Empresas!Sucursales_id_empresa_fkey (
+                    nombre,
+                    telefono_principal,
+                    correo_principal,
+                    direccion,
+                    usa_SAR
+                )
+            `)
+            .eq('id_sucursal', ventaBasica.id_sucursal)
             .single();
-        
+
         if (sucursalError) {
             console.error('Error al obtener sucursal:', sucursalError);
             throw new Error('Error al obtener datos de sucursal');
         }
-        console.log('Datos de sucursal:', sucursal);
 
-        const { data: empresa, error: empresaError } = await supabase
-            .from('Empresas')
-            .select('nombre, telefono_principal, correo_principal, direccion')
-            .eq('id_empresa', sucursal.id_empresa)
-            .single();
-        
-        if (empresaError) {
-            console.error('Error al obtener empresa:', empresaError);
-            throw new Error('Error al obtener datos de empresa');
-        }
-        console.log('Datos de empresa:', empresa);
+        console.log('Sucursal y empresa encontradas:', sucursal);
 
+        const empresa = sucursal.Empresas;
+
+        // Obtener detalles de venta
         const { data: detalles, error: detallesError } = await supabase
             .from('ventas_detalles')
             .select(`
@@ -320,81 +400,28 @@ const generarFactura = async (req, res) => {
             console.error('Error al obtener detalles:', detallesError);
             throw new Error('Error al obtener detalles de venta');
         }
-        console.log('Detalles de venta:', detalles);
 
-        const { data: datosSAR, error: sarError } = await supabase
-            .from('Datos_SAR')
-            .select(`
-                rango_inicial,
-                rango_final,
-                fecha_vencimiento
-            `)
-            .eq('id_sucursal', id_sucursal)
-            .single();
+        console.log('Detalles de venta encontrados:', detalles);
 
-        if (sarError) {
-            console.error('Error al obtener datos SAR:', sarError);
-            throw new Error('Error al obtener datos SAR');
+        // Obtener datos SAR si aplica
+        let datosSAR = null;
+        if (empresa.usa_SAR) {
+            const { data: sarData, error: sarError } = await supabase
+                .from('Datos_SAR')
+                .select('rango_inicial, rango_final, fecha_vencimiento')
+                .eq('id_sucursal', ventaBasica.id_sucursal)
+                .single();
+
+            if (!sarError) {
+                datosSAR = sarData;
+                console.log('Datos SAR encontrados:', datosSAR);
+            } else {
+                console.log('No hay registro válido de la sucursal en SAR');
+            }
         }
 
-        const numeroALetras = (numero) => {
-            const unidades = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
-            const decenas = ['', 'DIEZ', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
-            const especiales = {
-                11: 'ONCE', 12: 'DOCE', 13: 'TRECE', 14: 'CATORCE', 15: 'QUINCE',
-                16: 'DIECISEIS', 17: 'DIECISIETE', 18: 'DIECIOCHO', 19: 'DIECINUEVE',
-                21: 'VEINTIUNO', 22: 'VEINTIDOS', 23: 'VEINTITRES', 24: 'VEINTICUATRO', 25: 'VEINTICINCO',
-                26: 'VEINTISEIS', 27: 'VEINTISIETE', 28: 'VEINTIOCHO', 29: 'VEINTINUEVE'
-            };
-            const centenas = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
-
-            const convertirMiles = (n) => {
-                if (n === 0) return '';
-                if (n === 1) return 'MIL ';
-                return unidades[n] + ' MIL ';
-            };
-
-            const convertirCentenas = (n) => {
-                if (n === 0) return '';
-                if (n === 100) return 'CIEN ';
-                return centenas[Math.floor(n / 100)] + ' ';
-            };
-
-            const convertirDecenas = (n) => {
-                if (n === 0) return '';
-                const decena = Math.floor(n / 10);
-                const unidad = n % 10;
-                
-                if (n < 10) return unidades[n] + ' ';
-                if (especiales[n]) return especiales[n] + ' ';
-                if (unidad === 0) return decenas[decena] + ' ';
-                if (decena === 2) return 'VEINTI' + unidades[unidad].toLowerCase() + ' ';
-                return decenas[decena] + ' Y ' + unidades[unidad] + ' ';
-            };
-
-            const partes = Number(numero).toFixed(2).split('.');
-            const entero = parseInt(partes[0]);
-            const decimal = parseInt(partes[1]);
-
-            if (entero === 0) return 'CERO LEMPIRAS CON ' + decimal + '/100';
-
-            let resultado = '';
-            
-            const miles = Math.floor(entero / 1000);
-            if (miles > 0) resultado += convertirMiles(miles);
-
-            const centena = entero % 1000;
-            if (centena > 0) {
-                resultado += convertirCentenas(centena);
-                const decena = centena % 100;
-                resultado += convertirDecenas(decena);
-            }
-
-            resultado += 'LEMPIRAS CON ' + decimal + '/100';
-            return resultado.trim();
-        };
-
-        console.log('Creando documento PDF...');
+        // Crear el PDF
+        console.log('Iniciando creación del PDF...');
         const doc = new PDFDocument({
             size: [227, 800],
             margin: 10,
@@ -419,6 +446,13 @@ const generarFactura = async (req, res) => {
             doc.moveDown(0.5);
         };
 
+        if (esCopia) {
+            doc.font('Helvetica-Bold')
+                .fontSize(12)
+                .text('COPIA', { align: 'center' })
+                .moveDown(0.5);
+        }
+
         doc.font('Helvetica-Bold')
             .fontSize(12)
             .text(empresa.nombre, { align: 'center' })
@@ -431,11 +465,13 @@ const generarFactura = async (req, res) => {
         doc.font('Helvetica')
             .fontSize(8)
             .text(`Sucursal: ${sucursal.nombre_administrativo}`)
-            .text(`Factura: ${formatNumeroFactura(venta.facturas[0].factura_SAR[0].numero_factura_SAR)}`)
-            .text(`Fecha Emisión: ${format(new Date(venta.created_at), 'dd-MM-yyyy HH:mm:ss')}`)
-            .text(`Cajer@: ${venta.Usuarios.nombre} ${venta.Usuarios.apellido}`)
-            .text(`Cliente: ${venta.Clientes?.nombre_completo || 'Consumidor Final'}`)
-            .text(`R.T.N: ${venta.Clientes?.rtn || '00000000000000'}`)
+            .text(`Factura: ${empresa.usa_SAR && factura.factura_SAR.length > 0 ? 
+                formatNumeroFactura(factura.factura_SAR[0].numero_factura_SAR) : 
+                factura.codigo_factura}`)
+            .text(`Fecha Emisión: ${format(new Date(ventaBasica.created_at), 'dd-MM-yyyy HH:mm:ss')}`)
+            .text(`Cajer@: ${usuario.nombre} ${usuario.apellido}`)
+            .text(`Cliente: ${cliente?.nombre_completo || 'Consumidor Final'}`)
+            .text(`R.T.N: ${cliente?.rtn || '00000000000000'}`)
             .moveDown(0.5);
 
         const startY = doc.y;
@@ -464,50 +500,54 @@ const generarFactura = async (req, res) => {
         doc.moveTo(10, doc.y + 5).lineTo(217, doc.y + 5).stroke();
         doc.moveDown();
 
-        printLineItem('IMPORTE EXONERADO:', venta.facturas[0].total_extento);
-        printLineItem('IMPORTE GRAVADO 15%:', venta.facturas[0].gravado_15);
-        printLineItem('IMPORTE GRAVADO 18%:', venta.facturas[0].gravado_18);
-        printLineItem('Rebajas y Descuento:', venta.facturas[0].descuento);
-        printLineItem('ISV 15%:', venta.facturas[0].ISV_15);
-        printLineItem('ISV 18%:', venta.facturas[0].ISV_18);
+        printLineItem('IMPORTE EXONERADO:', factura.total_extento);
+        printLineItem('IMPORTE GRAVADO 15%:', factura.gravado_15);
+        printLineItem('IMPORTE GRAVADO 18%:', factura.gravado_18);
+        printLineItem('Rebajas y Descuento:', factura.descuento);
+        printLineItem('ISV 15%:', factura.ISV_15);
+        printLineItem('ISV 18%:', factura.ISV_18);
 
         doc.font('Helvetica-Bold')
             .text('Total:', 10)
-            .text(venta.facturas[0].total.toFixed(2), 170, doc.y - 12, { align: 'right' })
+            .text(factura.total.toFixed(2), 170, doc.y - 12, { align: 'right' })
             .font('Helvetica')
             .moveDown();
 
-        doc.font('Helvetica');
-        printLineItem('Tipo de Pago:', venta.facturas[0].tipo_factura);
-        printLineItem('Efectivo:', venta.facturas[0].pago);
-        printLineItem('Cambio:', venta.facturas[0].cambio);
+        printLineItem('Tipo de Pago:', factura.tipo_factura);
+        printLineItem('Efectivo:', factura.pago);
+        printLineItem('Cambio:', factura.cambio);
 
         doc.text(' ', 10)
             .moveDown(0.5)
-            .text(numeroALetras(venta.facturas[0].total), { align: 'center' })
+            .text(numeroALetras(factura.total), { align: 'center' })
             .moveDown()
             .moveDown()
             .text('No. de Orden de Compra Exenta:', { align: 'center' })
             .text('No. Constancia de Registro de Exonerados:', { align: 'center' })
             .text('No. Registro de SAG:', { align: 'center' })
-            .moveDown()
-            .text(`CAI: ${venta.facturas[0].factura_SAR[0].numero_CAI}`, { align: 'center' })
-            .text(`Rango Facturación: ${formatRangoFacturacion(datosSAR.rango_inicial)} A ${formatRangoFacturacion(datosSAR.rango_final)}`, { align: 'center' })
-            .text(`Fecha Límite de Emisión: ${format(new Date(datosSAR.fecha_vencimiento), 'dd-MM-yyyy')}`, { align: 'center' })
-            .moveDown()
-            .font('Helvetica-Bold');
+            .moveDown();
 
+        if (empresa.usa_SAR && datosSAR && factura.factura_SAR.length > 0) {
+            doc.text(`CAI: ${factura.factura_SAR[0].numero_CAI}`, { align: 'center' })
+                .text(`Rango Facturación: ${formatRangoFacturacion(datosSAR.rango_inicial)} A ${formatRangoFacturacion(datosSAR.rango_final)}`, { align: 'center' })
+                .text(`Fecha Límite de Emisión: ${format(new Date(datosSAR.fecha_vencimiento), 'dd-MM-yyyy')}`, { align: 'center' })
+                .moveDown();
+        }
+
+        doc.font('Helvetica-Bold');
         if (esCopia) {
             doc.text('FACTURA--COPIA', { align: 'center' })
                 .moveDown();
         }
 
+
+        console.log('Finalizando documento PDF...');
         doc.text('LA FACTURA ES BENEFICIO DE TODOS,', { align: 'center' })
             .text('EXIJALA', { align: 'center' });
 
-        console.log('Finalizando documento...');
+        console.log('Finalizando documento PDF...');
         doc.end();
-        console.log('Documento PDF generado exitosamente');
+        console.log('PDF generado exitosamente');
 
     } catch (error) {
         console.error('Error en la generación de la factura:', error);

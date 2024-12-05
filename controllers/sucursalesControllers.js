@@ -228,21 +228,54 @@ const desactivarSucursal = async (req, res) => {
     const id_sucursal = req.params.id_sucursal;
 
     try {
-        const { data, error } = await supabase.from('Sucursales').update(
-            {
-             estado: estado
-        }).eq('id_sucursal', id_sucursal);
+        // 1. Desactivar la sucursal
+        const { data: sucursalData, error: sucursalError } = await supabase
+            .from('Sucursales')
+            .update({ estado: estado })
+            .eq('id_sucursal', id_sucursal);
 
-        if(error) {
-         return res.status(500).json({error: error.message});
+        if (sucursalError) {
+            throw new Error(`Error al actualizar la sucursal: ${sucursalError.message}`);
         }
 
-        res.status(200).json(data);
+        // 2. Obtener todos los usuarios asociados a esta sucursal
+        const { data: usuariosSucursal, error: usuariosError } = await supabase
+            .from('sucursales_usuarios')  // Nombre corregido de la tabla
+            .select('id_usuario')
+            .eq('id_sucursal', id_sucursal);
+
+        if (usuariosError) {
+            throw new Error(`Error al obtener usuarios de la sucursal: ${usuariosError.message}`);
+        }
+
+        // 3. Desactivar todos los usuarios asociados
+        if (usuariosSucursal && usuariosSucursal.length > 0) {
+            const usuariosIds = usuariosSucursal.map(us => us.id_usuario);
+            
+            const { error: updateUsuariosError } = await supabase
+                .from('Usuarios')
+                .update({ estado: estado })
+                .in('id_usuario', usuariosIds);
+
+            if (updateUsuariosError) {
+                throw new Error(`Error al actualizar usuarios: ${updateUsuariosError.message}`);
+            }
+        }
+
+        res.status(200).json(true);
 
     } catch (error) {
-        console.log('ha habido un error en la api');
-        res.status(500).json({error: error.message});
+        console.error('Error en desactivarSucursal:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Error al desactivar la sucursal y sus usuarios'
+        });
     }
-}
+};
+
+
+
+
+
 
 module.exports = { getSucursales, getDatosSucursal, getSucursalesbyUsuario, getSucursalesbyUsuarioSummary,patchSucursal, postSucursal, desactivarSucursal, getSucursalValida }

@@ -431,22 +431,16 @@ const getUltimasVentas = async (req, res) => {
 
         if (userError) throw userError;
 
-        let sucursalesFilter;
-        if (userData.id_rol === 4) { // CEO
-            const id_empresa = await getEmpresaId(id_usuario, supabase);
-            const { data: sucursales } = await supabase
-                .from('Sucursales')
-                .select('id_sucursal')
-                .eq('id_empresa', id_empresa)
-                .eq('estado', true);
-            
-            sucursalesFilter = sucursales.map(s => s.id_sucursal);
-        } else {
-            const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
-            sucursalesFilter = [id_sucursal];
+        // Si es CEO (rol 4), retornar un arreglo vacío
+        if (userData.id_rol === 4) {
+            return res.status(200).json({
+                sales: []
+            });
         }
 
-        // Obtener las últimas ventas
+        // Para todos los demás roles, usar la lógica original
+        const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+
         const { data: ventas, error: errorVentas } = await supabase
             .from('Ventas')
             .select(`
@@ -454,12 +448,10 @@ const getUltimasVentas = async (req, res) => {
                 id_cliente,
                 id_usuario,
                 id_venta,
-                estado,
-                id_sucursal,
-                Sucursales(nombre_sucursal)
+                estado
             `)
             .eq('estado', 'Pagada')
-            .in('id_sucursal', sucursalesFilter)
+            .eq('id_sucursal', id_sucursal)
             .order('created_at', { ascending: false })
             .limit(5);
 
@@ -491,8 +483,7 @@ const getUltimasVentas = async (req, res) => {
                 vendedor: usuario ? `${usuario.nombre} ${usuario.apellido}` : 'N/A',
                 numero: cliente?.telefono || '0000-0000',
                 fecha: venta.created_at,
-                total: factura ? `L. ${factura.total.toFixed(2)}` : 'L. 0.00',
-                sucursal: venta.Sucursales?.nombre_sucursal || 'N/A' // Añadido nombre de sucursal
+                total: factura ? `L. ${factura.total.toFixed(2)}` : 'L. 0.00'
             };
         }));
 
@@ -505,5 +496,4 @@ const getUltimasVentas = async (req, res) => {
         res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
     }
 };
-
 module.exports = { getVentasEmpresa, getAlertasPorPromocionProducto, getClientesEmpresa, getAlertasPromocion, getVentasUltimosTresMeses, getCategoriasPopulares, getUltimasVentas };

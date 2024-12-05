@@ -2,6 +2,7 @@ const { getEmpresaId } = require('../db/empresaSvc.js');
 const { existenciProductCode } = require('../db/validaciones.js');
 const { catProdAdd, catProdGet, deleteCatProd } = require('../db/catProdSvs.js');
 const { pruebaPromos } = require('../db/promocionesSvs.js');
+const { postInventarioEmpresas } = require('../db/inventarioSvc.js');
 
 const getProductosOfInventory = async (req, res) => {
     const supabase = req.supabase;
@@ -144,7 +145,8 @@ const postProducto = async (req, res) => {
             throw 'Ocurrio un error al guardar producto';
         }
 
-        console.log(typeof categorias);
+        await postInventarioEmpresas(producto[0].id_producto, id_empresa_param, supabase);
+
 
         if (categorias && Array.isArray(categorias) && categorias.length > 0){
             const asignarCat =  await catProdAdd(categorias, producto[0].id_producto, supabase);

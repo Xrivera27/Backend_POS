@@ -39,4 +39,23 @@ const empresaUsaSAR = async (id_usuario, supabase) => {
     }
 }
 
-module.exports = { getEmpresaId, empresaUsaSAR }
+const getSucursalesbyEmpresa = async (id_empresa, supabase) => {
+    try {
+        const { data: sucursales, error } = await supabase.from('Sucursales')
+        .select('id_sucursal, nombre_administrativo')
+        .eq('id_empresa', id_empresa)
+        .eq('estado', true);
+
+        if(error){
+            throw error;
+        }
+
+        return sucursales;
+
+    } catch (error) {
+        console.error('Ocurrio un error al obtener sucursales de empresa.', error);
+        throw error;
+    }
+}
+
+module.exports = { getEmpresaId, empresaUsaSAR, getSucursalesbyEmpresa }

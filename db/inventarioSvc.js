@@ -1,5 +1,7 @@
 //Funciones relacionadas con inventario para que no esten en controller 
 
+const { getSucursalesbyEmpresa } = require('./empresaSvc.js');
+
 const getInventario = async (id_producto, id_sucursal, supabase) => {
     try {
 
@@ -24,10 +26,28 @@ const getInventario = async (id_producto, id_sucursal, supabase) => {
     }
 };
 
+const postInventarioEmpresas = async (id_producto, id_empresa, supabase) => {
+    try {
+       const id_sucursales = await getSucursalesbyEmpresa(id_empresa, supabase);
+  
+       const promesas = id_sucursales.map(async (s) => {
+        const { resultado, error } = await postFirstinventario(id_producto, s.id_sucursal, supabase);
+
+        if(!resultado)
+            throw error;
+       });
+
+       await Promise.all(promesas);
+
+    } catch (error) {
+        throw new Error(error);
+    }
+}
 
 const postFirstinventario = async (id_producto, id_sucursal, supabase) => {
     try {
-        const { data: inventario, error } = supabase
+
+        const { data: inventario, error } = await supabase
         .from('inventarios')
         .insert({
             id_producto: id_producto,
@@ -38,10 +58,13 @@ const postFirstinventario = async (id_producto, id_sucursal, supabase) => {
             throw 'Error al intentar agregar producto a inventario';
         }
 
-        return inventario;
+        return {inventario,
+resultado: true
+        };
 
     } catch (error) {
-        throw new Error(error);
+        console.error('Ocurrio un error al agregar productos a las sucursales', error);
+        return { error, resultado: false }
     }
 }
 
@@ -265,7 +288,8 @@ const setNullRollBack = async (id_compra_guardada, supabase) => {
 }
 
 module.exports = { 
-    postFirstinventario, 
+    postFirstinventario,
+    postInventarioEmpresas,
     buscarProductoInventario, 
     reducirInventario,
     aumentarInventario,  // Añadir esta línea

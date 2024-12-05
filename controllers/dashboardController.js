@@ -1,4 +1,6 @@
 const { getEmpresaId } = require('../db/empresaSvc.js');
+const { getSucursalesbyUser } = require('../db/sucursalUsuarioSvc.js');
+
 
 const getVentasEmpresa = async (req, res) => {
     const supabase = req.supabase;
@@ -9,41 +11,53 @@ const getVentasEmpresa = async (req, res) => {
     finHoy.setHours(23, 59, 59, 999);
 
     try {
-        const id_empresa = await getEmpresaId(id_usuario, supabase);
-        const { data, error } = await supabase.from('Sucursales')
-            .select('id_sucursal')
-            .eq('id_empresa', id_empresa)
-            .eq('estado', true);
+        // Primero obtener el rol del usuario
+        const { data: userData, error: userError } = await supabase
+            .from('Usuarios')
+            .select('id_rol')
+            .eq('id_usuario', id_usuario)
+            .single();
 
-        if (error) {
-            return res.status(500).json({ error: 'Error al obtener sucursales: ' + error.message });
+        if (userError) throw userError;
+
+        let ventasQuery;
+        if (userData.id_rol === 4) { // CEO
+            const id_empresa = await getEmpresaId(id_usuario, supabase);
+            const { data: sucursales } = await supabase
+                .from('Sucursales')
+                .select('id_sucursal')
+                .eq('id_empresa', id_empresa)
+                .eq('estado', true);
+
+            ventasQuery = await supabase.from('Ventas')
+                .select('id_venta, facturas(id_factura, total)')
+                .gte('created_at', inicioHoy.toISOString())
+                .lte('created_at', finHoy.toISOString())
+                .eq('estado', 'Pagada')
+                .in('id_sucursal', sucursales.map(s => s.id_sucursal));
+        } else {
+            // Para otros roles, solo mostrar su sucursal
+            const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+            ventasQuery = await supabase.from('Ventas')
+                .select('id_venta, facturas(id_factura, total)')
+                .gte('created_at', inicioHoy.toISOString())
+                .lte('created_at', finHoy.toISOString())
+                .eq('estado', 'Pagada')
+                .eq('id_sucursal', id_sucursal);
         }
-        if (data.length === 0) {
-            return res.status(500).json({ error: 'No hay sucursales disponibles' });
-        }
 
-        const { data: ventasSucursales, error: errorVentasSucursales } = await supabase.from('Ventas')
-            .select('id_venta, facturas(id_factura, total)')
-            .gte('created_at', inicioHoy.toISOString())
-            .lte('created_at', finHoy.toISOString())
-            .eq('estado', 'Pagada')  // Agregamos el filtro de estado
-            .in('id_sucursal', data.map(d => d.id_sucursal));
-
-        if (errorVentasSucursales) {
-            console.log(errorVentasSucursales);
-            return res.status(500).json({ error: 'Error de ventas por sucursales ' + error.message });
+        if (ventasQuery.error) {
+            throw ventasQuery.error;
         }
 
         let total = 0;
-        ventasSucursales.forEach(venta => {
+        ventasQuery.data.forEach(venta => {
             venta.facturas.forEach(factura => {
                 total += factura.total;
             });
         });
 
-        // Redondear a 2 dígitos después del punto decimal
         total = parseFloat(total.toFixed(2));
-
         res.status(200).json(total);
     } catch (error) {
         console.error('Error en el endpoint de ventas:', error);
@@ -150,20 +164,28 @@ const getVentasUltimosTresMeses = async (req, res) => {
     const id_usuario = req.params.id_usuario;
 
     try {
-        const id_empresa = await getEmpresaId(id_usuario, supabase);
-        
-        if (!id_empresa) {
-            return res.status(404).json({ error: 'Empresa no encontrada para el usuario especificado.' });
-        }
+        // Obtener el rol del usuario
+        const { data: userData, error: userError } = await supabase
+            .from('Usuarios')
+            .select('id_rol')
+            .eq('id_usuario', id_usuario)
+            .single();
 
-        const { data: sucursales, error: errorSucursales } = await supabase
-            .from('Sucursales')
-            .select('id_sucursal')
-            .eq('id_empresa', id_empresa)
-            .eq('estado', true);
+        if (userError) throw userError;
 
-        if (errorSucursales) {
-            return res.status(500).json({ error: 'Error al obtener sucursales: ' + errorSucursales.message });
+        let sucursalesFilter;
+        if (userData.id_rol === 4) { // CEO
+            const id_empresa = await getEmpresaId(id_usuario, supabase);
+            const { data: sucursales } = await supabase
+                .from('Sucursales')
+                .select('id_sucursal')
+                .eq('id_empresa', id_empresa)
+                .eq('estado', true);
+            
+            sucursalesFilter = sucursales.map(s => s.id_sucursal);
+        } else {
+            const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+            sucursalesFilter = [id_sucursal];
         }
 
         const fechaActual = new Date();
@@ -176,7 +198,7 @@ const getVentasUltimosTresMeses = async (req, res) => {
         const { data: ventasPagadas, error: errorVentasPagadas } = await supabase
             .from('Ventas')
             .select('created_at')
-            .in('id_sucursal', sucursales.map(s => s.id_sucursal))
+            .in('id_sucursal', sucursalesFilter)
             .eq('estado', 'Pagada')
             .gte('created_at', tresMesesAtras.toISOString())
             .lte('created_at', fechaActual.toISOString());
@@ -185,7 +207,7 @@ const getVentasUltimosTresMeses = async (req, res) => {
         const { data: ventasCanceladas, error: errorVentasCanceladas } = await supabase
             .from('Ventas')
             .select('created_at')
-            .in('id_sucursal', sucursales.map(s => s.id_sucursal))
+            .in('id_sucursal', sucursalesFilter)
             .eq('estado', 'Cancelada')
             .gte('created_at', tresMesesAtras.toISOString())
             .lte('created_at', fechaActual.toISOString());
@@ -199,7 +221,6 @@ const getVentasUltimosTresMeses = async (req, res) => {
             'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
         ];
 
-        // Inicializar contadores para ambos tipos de ventas
         const ventasPorMes = {};
         for (let i = 2; i >= 0; i--) {
             const fecha = new Date();
@@ -212,7 +233,6 @@ const getVentasUltimosTresMeses = async (req, res) => {
             };
         }
 
-        // Contar ventas pagadas por mes
         ventasPagadas?.forEach(venta => {
             const fecha = new Date(venta.created_at);
             const mesKey = `${fecha.getFullYear()}-${(fecha.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -221,7 +241,6 @@ const getVentasUltimosTresMeses = async (req, res) => {
             }
         });
 
-        // Contar ventas canceladas por mes
         ventasCanceladas?.forEach(venta => {
             const fecha = new Date(venta.created_at);
             const mesKey = `${fecha.getFullYear()}-${(fecha.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -403,7 +422,25 @@ const getUltimasVentas = async (req, res) => {
     const id_usuario = req.params.id_usuario;
 
     try {
-        // Obtener las últimas ventas CON ESTADO PAGADA
+        // Obtener el rol del usuario
+        const { data: userData, error: userError } = await supabase
+            .from('Usuarios')
+            .select('id_rol')
+            .eq('id_usuario', id_usuario)
+            .single();
+
+        if (userError) throw userError;
+
+        // Si es CEO (rol 4), retornar un arreglo vacío
+        if (userData.id_rol === 4) {
+            return res.status(200).json({
+                sales: []
+            });
+        }
+
+        // Para todos los demás roles, usar la lógica original
+        const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
+
         const { data: ventas, error: errorVentas } = await supabase
             .from('Ventas')
             .select(`
@@ -413,7 +450,8 @@ const getUltimasVentas = async (req, res) => {
                 id_venta,
                 estado
             `)
-            .eq('estado', 'Pagada')  // Filtro explícito para ventas pagadas
+            .eq('estado', 'Pagada')
+            .eq('id_sucursal', id_sucursal)
             .order('created_at', { ascending: false })
             .limit(5);
 
@@ -421,23 +459,19 @@ const getUltimasVentas = async (req, res) => {
             return res.status(500).json({ error: 'Error al obtener ventas: ' + errorVentas.message });
         }
 
-        // Obtener los datos relacionados por separado
         const ventasFormateadas = await Promise.all(ventas.map(async (venta) => {
-            // Obtener datos del cliente
             const { data: cliente } = await supabase
                 .from('Clientes')
                 .select('nombre_completo, telefono')
                 .eq('id_cliente', venta.id_cliente)
                 .single();
 
-            // Obtener datos del usuario (vendedor)
             const { data: usuario } = await supabase
                 .from('Usuarios')
                 .select('nombre, apellido')
                 .eq('id_usuario', venta.id_usuario)
                 .single();
 
-            // Obtener datos de la factura
             const { data: factura } = await supabase
                 .from('facturas')
                 .select('total')
@@ -462,5 +496,4 @@ const getUltimasVentas = async (req, res) => {
         res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
     }
 };
-
 module.exports = { getVentasEmpresa, getAlertasPorPromocionProducto, getClientesEmpresa, getAlertasPromocion, getVentasUltimosTresMeses, getCategoriasPopulares, getUltimasVentas };

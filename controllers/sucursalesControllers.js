@@ -238,24 +238,32 @@ const desactivarSucursal = async (req, res) => {
             throw new Error(`Error al actualizar la sucursal: ${sucursalError.message}`);
         }
 
-        // 2. Obtener todos los usuarios asociados a esta sucursal
+        // 2. Obtener usuarios con roles 1,2,3 asociados a esta sucursal
         const { data: usuariosSucursal, error: usuariosError } = await supabase
-            .from('sucursales_usuarios')  // Nombre corregido de la tabla
-            .select('id_usuario')
-            .eq('id_sucursal', id_sucursal);
+            .from('sucursales_usuarios')
+            .select(`
+                id_usuario,
+                Usuarios!inner (
+                    id_usuario,
+                    id_rol
+                )
+            `)
+            .eq('id_sucursal', id_sucursal)
+            .in('Usuarios.id_rol', [1, 2, 3]);
 
         if (usuariosError) {
             throw new Error(`Error al obtener usuarios de la sucursal: ${usuariosError.message}`);
         }
 
-        // 3. Desactivar todos los usuarios asociados
+        // 3. Desactivar los usuarios filtrados
         if (usuariosSucursal && usuariosSucursal.length > 0) {
             const usuariosIds = usuariosSucursal.map(us => us.id_usuario);
             
             const { error: updateUsuariosError } = await supabase
                 .from('Usuarios')
                 .update({ estado: estado })
-                .in('id_usuario', usuariosIds);
+                .in('id_usuario', usuariosIds)
+                .in('id_rol', [1, 2, 3]); // Doble verificación de roles
 
             if (updateUsuariosError) {
                 throw new Error(`Error al actualizar usuarios: ${updateUsuariosError.message}`);
@@ -272,8 +280,6 @@ const desactivarSucursal = async (req, res) => {
         });
     }
 };
-
-
 
 
 

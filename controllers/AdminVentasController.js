@@ -330,7 +330,6 @@ const generarFactura = async (req, res) => {
                 fecha_vencimiento
             `)
             .eq('id_sucursal', id_sucursal)
-            .eq('activo', true)
             .single();
 
         if (sarError) {

@@ -211,7 +211,7 @@ const registrarCompra = async (req, res) => {
             try {
            //     console.log('14. Actualizando stock del inventario');
                 await aumentarInventario(inventario, cantidadTotal, supabase);
-                 await necesitaAlertStockMax(productoActual, id_usuario, supabase);
+                 necesitaAlertStockMax(productoActual, id_usuario, supabase);
                  necesitaAlertStockMin(productoActual, id_usuario, supabase);
                 
            //     console.log('15. Stock actualizado correctamente');

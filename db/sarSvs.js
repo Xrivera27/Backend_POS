@@ -13,7 +13,7 @@ const desactivarSar = async (id_sucursal, supabase) => {
         }
 
     } catch (error) {
-        console.error(`Ocurrio un error al intentar desactivar datos SAR de la sucursal ${id_sucursal}`);
+        console.error(`Ocurrio un error al intentar desactivar datos SAR de la sucursal ${id_sucursal}`, error);
     }
 }
 
@@ -33,7 +33,7 @@ const desactivarSarRango = async (id_sucursal, supabase) => {
 
         const rangoActual = parseInt(data.numero_actual_SAR.slice(-5), 10);
         const rangoFinal = parseInt(data.rango_final.slice(-5), 10);
-        if ( rangoActual = rangoFinal){
+        if ( rangoActual === rangoFinal){
            await desactivarSar(id_sucursal, supabase);
         }
 return;

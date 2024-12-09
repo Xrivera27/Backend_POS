@@ -92,6 +92,9 @@ const getIdCajeroBySucursal = async (id_sucursal, supabase) => {
     }
 }
 
+
+
+
 const existeRelacion = async (id_usuario, id_sucursal, supabase) => {
 try {
     const { data, error } = await supabase.from('sucursales_usuarios')

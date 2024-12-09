@@ -1314,6 +1314,47 @@ const generarPDFCierreCaja = async (req, res) => {
     }
 };
 
+const verificarPasswordAdmin = async (req, res) => {
+    try {
+        const supabase = req.supabase;
+        const {id_sucursal} = req.params;
+        const { passwordTry } = req.body;
+        const { data: ids, error } = await supabase.from('sucursales_usuarios')
+        .select('id_usuario, Usuarios(id_usuario, id_rol, nombre, apellido, contraseña, estado)')
+        .eq('Usuarios.id_rol', 1)
+        .eq('Usuarios.estado', true)
+        .eq('id_sucursal', id_sucursal);
+
+        if(ids.length < 1 ){
+            return res.status(200).json({
+                resultado: false
+            });
+        }
+
+        const newIds = ids.filter(u => u.Usuarios !== null && u.Usuarios.contraseña === passwordTry );
+
+        if(newIds.length < 1){
+            return res.status(200).json({
+                resultado: false
+            });
+        }
+        
+        if (error){
+            throw error;
+        }
+
+        res.status(200).json({
+            resultado: true
+        });
+
+    } catch (error) {
+        console.error('Ha ocurrido un error: ', error);
+        res.status(500).json({
+            resultado: false,
+            error: error
+        });
+    }
+}
 
   // Nueva ruta para obtener totales de caja
   const getTotalesCaja = async(req, res) => {
@@ -1424,7 +1465,7 @@ module.exports = {
     generarFactura,
     generarPDFCierreCaja,
     getTotalesCaja,
-    
+    verificarPasswordAdmin,
     ////promociones
     pruebaPromos
 

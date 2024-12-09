@@ -20,6 +20,7 @@ const { getPrePage,
     generarFactura,
     generarPDFCierreCaja,
     getTotalesCaja,
+    verificarPasswordAdmin,
 
 
     ///promos
@@ -38,6 +39,7 @@ router.get('/buscar-cliente/:rtn', verificarRtn);
 router.get('/mostrar-ventas/:id_usuario', getVentasGuardadas);
 router.get('/rec-venta/:id_compra_guardada', recuperarVentaGuardada);
 router.get('/existencia-caja/:id_usuario', cajaAbiertaUsuario);
+router.post('/eliminar-item/:id_sucursal', verificarPasswordAdmin);
 router.post('/confirmar/:id_usuario', postVenta);
 router.post('/guardar-venta/:id_usuario', guardarVenta);
 router.post('/crear-caja', crearCajaUsuario);

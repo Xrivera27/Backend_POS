@@ -88,7 +88,7 @@ const getProductPage = async (req, res) => {
         const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
 
         const { data: inventarios, error } = await supabase.from('inventarios')
-        .select('id_producto')
+        .select('id_producto, stock_actual')
         .eq('id_sucursal', id_sucursal)
         .eq('estado', true)
         .gt('stock_actual', 0 );
@@ -114,6 +114,7 @@ let descuento = 0;
             }
 
         if(p){
+            p.stock_actual = producto.stock_actual;
             const { resultado, promocionActiva: {porcentaje_descuento} } = await obtenerPromos(p.id_producto, supabase);
             if((p.precio_mayorista && p.cantidad_activar_mayorista) && 
             (p.precio_mayorista > 0 && p.cantidad_activar_mayorista > 0) && !resultado ){

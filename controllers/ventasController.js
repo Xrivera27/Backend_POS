@@ -127,7 +127,8 @@ let descuento = 0;
                 descuento = porcentaje_descuento / 100;
             }
             }
-            const precioImpuesto = calculos.impuestoProducto(p.precio_unitario, p.impuesto)
+            const precioImpuesto = calculos.impuestoProducto(p.precio_unitario, p.impuesto);
+            p.precioDescuento = precioImpuesto * descuento;
             p.precioImpuesto = precioImpuesto - ( precioImpuesto * descuento );
             return p;
         }

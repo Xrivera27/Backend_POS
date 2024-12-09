@@ -92,8 +92,44 @@ const getIdCajeroBySucursal = async (id_sucursal, supabase) => {
     }
 }
 
+const verificarPasswordAdmin = async (id_sucursal, passwordTry, supabase) => {
+    try {
+        const { data: ids, error } = await supabase.from('sucursales_usuarios')
+        .select('id_usuario, Usuarios(id_usuario, id_rol, nombre, apellido, contraseña, estado)')
+        .eq('Usuarios.id_rol', 1)
+        .eq('Usuarios.estado', true)
+        .eq('id_sucursal', id_sucursal);
 
+        if(ids.length < 1 ){
+            return {
+                resultado: false
+            };
+        }
 
+        const newIds = ids.filter(u => u.Usuarios !== null && u.Usuarios.contraseña === passwordTry );
+
+        if(newIds.length < 1){
+            return {
+                resultado: false
+            };
+        }
+        
+        if (error){
+            throw error;
+        }
+
+      return {
+            resultado: true
+        };
+
+    } catch (error) {
+        console.error('Ha ocurrido un error: ', error);
+        return {
+            resultado: false,
+            error: error
+        };
+    }
+}
 
 const existeRelacion = async (id_usuario, id_sucursal, supabase) => {
 try {
@@ -196,4 +232,4 @@ const deleteRelacion = async (id, supabase) => {
     }
 }
 
-module.exports = { existeRelacion, insertarRelacion, getSucursalesbyUser, getIdUsersBySucursal, getIdCajeroBySucursal, getDatosSarSucursal }
+module.exports = { existeRelacion, insertarRelacion, getSucursalesbyUser, getIdUsersBySucursal, getIdCajeroBySucursal, getDatosSarSucursal, verificarPasswordAdmin }

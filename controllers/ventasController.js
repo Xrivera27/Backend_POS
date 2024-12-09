@@ -1,4 +1,4 @@
-const { getSucursalesbyUser, getDatosSarSucursal } = require('../db/sucursalUsuarioSvc.js');
+const { getSucursalesbyUser, getDatosSarSucursal, verificarPasswordAdmin } = require('../db/sucursalUsuarioSvc.js');
 const PDFDocument = require('pdfkit');
 const { format } = require('date-fns');
 const { getEmpresaId } = require('../db/empresaSvc.js');
@@ -532,7 +532,7 @@ const recuperarVentaGuardada = async (req, res) => {
 
   const eliminarProductoVenta = async (req, res) => {
     const id_usuario = req.params.id_usuario;
-    const { id_producto } = req.body;
+    const { id_producto, passwordTry } = req.body;
     const supabase = req.supabase;
     try {
         const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
@@ -549,6 +549,13 @@ const recuperarVentaGuardada = async (req, res) => {
         if(!inventario_roll_back || inventario_roll_back === null){
             throw 'No existe roll back de este producto';
         }
+
+        const {resultado: resultadoPassword} = await verificarPasswordAdmin(id_sucursal, passwordTry, supabase);
+
+        if(!resultadoPassword){
+            throw 'Contraseña incorrecta.';
+        }
+        console.log(resultadoPassword);
 
         await eliminarInventarioRollBackEsp(inventario, inventario_roll_back.id_inventario_roll_back, supabase);
 
@@ -1313,48 +1320,6 @@ const generarPDFCierreCaja = async (req, res) => {
         });
     }
 };
-
-const verificarPasswordAdmin = async (req, res) => {
-    try {
-        const supabase = req.supabase;
-        const {id_sucursal} = req.params;
-        const { passwordTry } = req.body;
-        const { data: ids, error } = await supabase.from('sucursales_usuarios')
-        .select('id_usuario, Usuarios(id_usuario, id_rol, nombre, apellido, contraseña, estado)')
-        .eq('Usuarios.id_rol', 1)
-        .eq('Usuarios.estado', true)
-        .eq('id_sucursal', id_sucursal);
-
-        if(ids.length < 1 ){
-            return res.status(200).json({
-                resultado: false
-            });
-        }
-
-        const newIds = ids.filter(u => u.Usuarios !== null && u.Usuarios.contraseña === passwordTry );
-
-        if(newIds.length < 1){
-            return res.status(200).json({
-                resultado: false
-            });
-        }
-        
-        if (error){
-            throw error;
-        }
-
-        res.status(200).json({
-            resultado: true
-        });
-
-    } catch (error) {
-        console.error('Ha ocurrido un error: ', error);
-        res.status(500).json({
-            resultado: false,
-            error: error
-        });
-    }
-}
 
   // Nueva ruta para obtener totales de caja
   const getTotalesCaja = async(req, res) => {

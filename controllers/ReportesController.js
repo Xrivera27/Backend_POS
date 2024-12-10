@@ -297,7 +297,7 @@ const getUsuarioOfSucursal = async (req, res) => {
     const supabase = req.supabase;
 
     const id_usuario = req.params.id_usuario;
-    console('aqui esta el error');
+    console.log('aqui esta el error');
     const id_sucursal = await getSucursalesbyUser(id_usuario, supabase);
 
     const promesas = [

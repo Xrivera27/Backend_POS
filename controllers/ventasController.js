@@ -833,7 +833,16 @@ const recuperarVentaGuardada = async (req, res) => {
     }
   };
 
-  const generarFactura = async (req, res) => {
+  const adjustToHondurasTime = (date) => {
+    const hondurasDate = new Date(date);
+    const hondurasOffset = -6 * 60; // -6 horas en minutos
+    const currentOffset = hondurasDate.getTimezoneOffset();
+    const offsetDiff = hondurasOffset - currentOffset;
+    hondurasDate.setMinutes(hondurasDate.getMinutes() + offsetDiff);
+    return hondurasDate;
+};
+
+const generarFactura = async (req, res) => {
     const supabase = req.supabase;
     const id_venta = req.params.id_venta;
     const id_usuario = req.params.id_usuario;
@@ -899,16 +908,15 @@ const recuperarVentaGuardada = async (req, res) => {
         resultado += 'LEMPIRAS CON ' + decimal + '/100';
         return resultado.trim();
     };
-  
+
     try {
         if (!id_venta || !id_usuario) {
             throw new Error('Parámetros incompletos');
         }
 
-        // Verificar si la venta existe
         const { data: ventaBasica, error: ventaBasicaError } = await supabase
             .from('Ventas')
-            .select('*')
+            .select('*, created_at')
             .eq('id_venta', id_venta)
             .single();
 
@@ -917,7 +925,9 @@ const recuperarVentaGuardada = async (req, res) => {
             throw new Error(`No se encontró la venta con ID: ${id_venta}`);
         }
 
-        // Obtener la factura y datos SAR
+        // Convertir la fecha UTC a hora de Honduras
+        const fechaHonduras = adjustToHondurasTime(ventaBasica.created_at);
+
         const { data: factura, error: facturaError } = await supabase
             .from('facturas')
             .select('*, factura_SAR (*)')
@@ -929,7 +939,6 @@ const recuperarVentaGuardada = async (req, res) => {
             throw new Error('Error al obtener datos de factura');
         }
 
-        // Obtener datos del cliente
         const { data: cliente, error: clienteError } = await supabase
             .from('Clientes')
             .select('*')
@@ -940,7 +949,6 @@ const recuperarVentaGuardada = async (req, res) => {
             console.log('Cliente no encontrado, se usará Consumidor Final');
         }
 
-        // Obtener datos del usuario
         const { data: usuario, error: usuarioError } = await supabase
             .from('Usuarios')
             .select('nombre, apellido')
@@ -952,7 +960,6 @@ const recuperarVentaGuardada = async (req, res) => {
             throw new Error('Error al obtener datos del usuario');
         }
 
-        // Obtener datos de sucursal y empresa
         const { data: sucursal, error: sucursalError } = await supabase
             .from('Sucursales')
             .select(`
@@ -975,7 +982,6 @@ const recuperarVentaGuardada = async (req, res) => {
 
         const empresa = sucursal.Empresas;
 
-        // Obtener detalles de la venta
         const { data: detalles, error: detallesError } = await supabase
             .from('ventas_detalles')
             .select(`
@@ -996,7 +1002,6 @@ const recuperarVentaGuardada = async (req, res) => {
             throw new Error('Error al obtener detalles de venta');
         }
 
-        // Obtener datos SAR si la empresa lo usa
         let datosSAR = null;
         if (empresa.usa_SAR) {
             const { data: sarData, error: sarError } = await supabase
@@ -1015,7 +1020,6 @@ const recuperarVentaGuardada = async (req, res) => {
             datosSAR = sarData;
         }
 
-        // Crear documento PDF
         console.log('Creando documento PDF...');
         const doc = new PDFDocument({
             size: [227, 800],
@@ -1041,7 +1045,6 @@ const recuperarVentaGuardada = async (req, res) => {
             doc.moveDown(0.5);
         };
 
-        // Encabezado
         doc.font('Helvetica-Bold')
             .fontSize(12)
             .text(empresa.nombre, { align: 'center' })
@@ -1051,20 +1054,19 @@ const recuperarVentaGuardada = async (req, res) => {
             .text(`Email: ${empresa.correo_principal}`, { align: 'center' })
             .moveDown(0.5);
 
-        // Información Factura
         doc.font('Helvetica')
             .fontSize(8)
             .text(`Sucursal: ${sucursal.nombre_administrativo}`)
             .text(`Factura: ${empresa.usa_SAR ? 
                 formatNumeroFactura(factura.factura_SAR[0].numero_factura_SAR) : 
                 factura.codigo_factura}`)
-            .text(`Fecha Emisión: ${format(new Date(ventaBasica.created_at), 'dd-MM-yyyy HH:mm:ss')}`)
+            // Cambiar el formato a 12 horas
+            .text(`Fecha Emisión: ${format(fechaHonduras, 'dd-MM-yyyy hh:mm:ss')}`)
             .text(`Cajer@: ${usuario.nombre} ${usuario.apellido}`)
             .text(`Cliente: ${cliente?.nombre_completo || 'Consumidor Final'}`)
             .text(`R.T.N: ${cliente?.rtn || '00000000000000'}`)
             .moveDown(0.5);
 
-        // Encabezados de la tabla
         const startY = doc.y;
         doc.font('Helvetica-Bold')
             .text('Cant.', 10, startY, { width: 25 })
@@ -1072,11 +1074,9 @@ const recuperarVentaGuardada = async (req, res) => {
             .text('Precio', 165, startY, { width: 40, align: 'right' })
             .text('T', 205, startY, { width: 12, align: 'center' });
 
-        // Línea separadora
         doc.moveTo(10, doc.y + 0).lineTo(217, doc.y + 0).stroke();
         doc.moveDown(0.3);
 
-        // Productos
         doc.font('Helvetica');
         detalles.forEach(item => {
             const y = doc.y;
@@ -1090,11 +1090,9 @@ const recuperarVentaGuardada = async (req, res) => {
                 doc.moveDown();
         });
 
-        // Línea separadora
         doc.moveTo(10, doc.y + 5).lineTo(217, doc.y + 5).stroke();
         doc.moveDown();
 
-        // Totales
         printLineItem('IMPORTE EXONERADO:', factura.total_extento);
         printLineItem('IMPORTE GRAVADO 15%:', factura.gravado_15);
         printLineItem('IMPORTE GRAVADO 18%:', factura.gravado_18);
@@ -1102,7 +1100,6 @@ const recuperarVentaGuardada = async (req, res) => {
         printLineItem('ISV 15%:', factura.ISV_15);
         printLineItem('ISV 18%:', factura.ISV_18);
 
-        // Total y datos de pago
         doc.font('Helvetica-Bold')
             .text('Total:', 10)
             .text(factura.total.toFixed(2), 170, doc.y - 12, { align: 'right' })
@@ -1113,7 +1110,6 @@ const recuperarVentaGuardada = async (req, res) => {
         printLineItem('Efectivo:', factura.pago);
         printLineItem('Cambio:', factura.cambio);
 
-        // Total en letras y datos adicionales
         doc.text(' ', 10)
             .moveDown(0.5)
             .text(numeroALetras(factura.total), { align: 'center' })
@@ -1124,7 +1120,6 @@ const recuperarVentaGuardada = async (req, res) => {
             .text('No. Registro de SAG:', { align: 'center' })
             .moveDown();
 
-        // Información SAR (solo si usa_SAR es true)
         if (empresa.usa_SAR && datosSAR) {
             doc.text(`CAI: ${factura.factura_SAR[0].numero_CAI}`, { align: 'center' })
                 .text(`Rango Facturación: ${formatNumeroFactura(datosSAR.rango_inicial)} A ${formatNumeroFactura(datosSAR.rango_final)}`, { align: 'center' })
@@ -1148,6 +1143,7 @@ const recuperarVentaGuardada = async (req, res) => {
         });
     }
 };
+
 const generarPDFCierreCaja = async (req, res) => {
     try {
         const reporte = req.body;

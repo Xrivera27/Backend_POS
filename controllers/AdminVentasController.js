@@ -380,6 +380,15 @@ const generarFactura = async (req, res) => {
         resultado += 'LEMPIRAS CON ' + decimal + '/100';
         return resultado.trim();
     };
+
+    const adjustToHondurasTime = (date) => {
+        const hondurasDate = new Date(date);
+        const hondurasOffset = -6 * 60; // -6 horas en minutos
+        const currentOffset = hondurasDate.getTimezoneOffset();
+        const offsetDiff = hondurasOffset - currentOffset;
+        hondurasDate.setMinutes(hondurasDate.getMinutes() + offsetDiff);
+        return hondurasDate;
+    };
   
     try {
         if (!id_venta || !id_usuario) {
@@ -388,7 +397,6 @@ const generarFactura = async (req, res) => {
 
         console.log('Iniciando búsqueda de venta con ID:', id_venta);
 
-        // Primero verificamos si la venta existe
         const { data: ventaBasica, error: ventaBasicaError } = await supabase
             .from('Ventas')
             .select('*')
@@ -402,7 +410,6 @@ const generarFactura = async (req, res) => {
 
         console.log('Venta básica encontrada:', ventaBasica);
 
-        // Obtener factura
         const { data: factura, error: facturaError } = await supabase
             .from('facturas')
             .select('*, factura_SAR (*)')
@@ -416,7 +423,6 @@ const generarFactura = async (req, res) => {
 
         console.log('Factura encontrada:', factura);
 
-        // Obtener cliente si existe
         let cliente = null;
         if (ventaBasica.id_cliente) {
             const { data: clienteData, error: clienteError } = await supabase
@@ -433,7 +439,6 @@ const generarFactura = async (req, res) => {
             }
         }
 
-        // Obtener usuario
         const { data: usuario, error: usuarioError } = await supabase
             .from('Usuarios')
             .select('nombre, apellido')
@@ -447,7 +452,6 @@ const generarFactura = async (req, res) => {
 
         console.log('Usuario encontrado:', usuario);
 
-        // Obtener sucursal y empresa
         const { data: sucursal, error: sucursalError } = await supabase
             .from('Sucursales')
             .select(`
@@ -472,7 +476,6 @@ const generarFactura = async (req, res) => {
 
         const empresa = sucursal.Empresas;
 
-        // Obtener detalles de venta
         const { data: detalles, error: detallesError } = await supabase
             .from('ventas_detalles')
             .select(`
@@ -495,7 +498,6 @@ const generarFactura = async (req, res) => {
 
         console.log('Detalles de venta encontrados:', detalles);
 
-        // Obtener datos SAR si aplica
         let datosSAR = null;
         if (empresa.usa_SAR) {
             const { data: sarData, error: sarError } = await supabase
@@ -512,7 +514,6 @@ const generarFactura = async (req, res) => {
             }
         }
 
-        // Crear el PDF
         console.log('Iniciando creación del PDF...');
         const doc = new PDFDocument({
             size: [227, 800],
@@ -554,13 +555,15 @@ const generarFactura = async (req, res) => {
             .text(`Email: ${empresa.correo_principal}`, { align: 'center' })
             .moveDown(0.5);
 
+        const fechaHonduras = adjustToHondurasTime(ventaBasica.created_at);
+
         doc.font('Helvetica')
             .fontSize(8)
             .text(`Sucursal: ${sucursal.nombre_administrativo}`)
             .text(`Factura: ${empresa.usa_SAR && factura.factura_SAR.length > 0 ? 
                 formatNumeroFactura(factura.factura_SAR[0].numero_factura_SAR) : 
                 factura.codigo_factura}`)
-            .text(`Fecha Emisión: ${format(new Date(ventaBasica.created_at), 'dd-MM-yyyy HH:mm:ss')}`)
+            .text(`Fecha Emisión: ${format(fechaHonduras, 'dd-MM-yyyy hh:mm:ss')}`)
             .text(`Cajer@: ${usuario.nombre} ${usuario.apellido}`)
             .text(`Cliente: ${cliente?.nombre_completo || 'Consumidor Final'}`)
             .text(`R.T.N: ${cliente?.rtn || '00000000000000'}`)
@@ -632,8 +635,6 @@ const generarFactura = async (req, res) => {
                 .moveDown();
         }
 
-
-        console.log('Finalizando documento PDF...');
         doc.text('LA FACTURA ES BENEFICIO DE TODOS,', { align: 'center' })
             .text('EXIJALA', { align: 'center' });
 
@@ -650,7 +651,6 @@ const generarFactura = async (req, res) => {
         });
     }
 };
-
 const cancelarVenta = async (req, res) => {
     const { supabase } = req;
     const { id_venta } = req.params;

@@ -833,14 +833,6 @@ const recuperarVentaGuardada = async (req, res) => {
     }
   };
 
-  const adjustToHondurasTime = (date) => {
-    const hondurasDate = new Date(date);
-    const hondurasOffset = -6 * 60; // -6 horas en minutos
-    const currentOffset = hondurasDate.getTimezoneOffset();
-    const offsetDiff = hondurasOffset - currentOffset;
-    hondurasDate.setMinutes(hondurasDate.getMinutes() + offsetDiff);
-    return hondurasDate;
-};
 
 const generarFactura = async (req, res) => {
     const supabase = req.supabase;
@@ -1161,6 +1153,21 @@ const generarFactura = async (req, res) => {
 const generarPDFCierreCaja = async (req, res) => {
     try {
         const reporte = req.body;
+        // Obtener el id_usuario directamente del parámetro que ya tenemos
+        const id_usuario = req.params.id_usuario || 85; // Usar 85 como valor por defecto si no viene en params
+
+        // Obtener datos del cajero con el id_usuario
+        const { data: usuario, error: usuarioError } = await req.supabase
+            .from('Usuarios')
+            .select('nombre, apellido')
+            .eq('id_usuario', id_usuario)
+            .single();
+
+        if (usuarioError) {
+            console.error('Error al obtener datos del usuario:', usuarioError);
+            throw new Error('Error al obtener datos del usuario');
+        }
+
         const doc = new PDFDocument({
             size: [227, 800],
             margin: 15
@@ -1196,6 +1203,10 @@ const generarPDFCierreCaja = async (req, res) => {
                align: 'left'
            })
            .text(`Fecha Cierre: ${reporte.fechaFinal}`, {
+               width: anchoDisponible,
+               align: 'left'
+           })
+           .text(`Cajero: ${usuario.nombre} ${usuario.apellido}`, {
                width: anchoDisponible,
                align: 'left'
            })

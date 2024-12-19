@@ -847,6 +847,18 @@ const generarReporteCancelacion = async (req, res) => {
             throw new Error(`No se encontró la venta con ID: ${id_venta}`);
         }
 
+        // Obtener datos del cajero
+        const { data: usuario, error: usuarioError } = await supabase
+            .from('Usuarios')
+            .select('nombre, apellido')
+            .eq('id_usuario', venta.id_usuario)
+            .single();
+
+        if (usuarioError) {
+            console.error('Error al obtener datos del usuario:', usuarioError);
+            throw new Error('Error al obtener datos del usuario');
+        }
+
         console.log('Buscando caja con ID:', venta.id_caja);
 
         const { data: caja, error: cajaError } = await supabase
@@ -925,6 +937,10 @@ const generarReporteCancelacion = async (req, res) => {
                width: anchoDisponible,
                align: 'left'
            })
+           .text(`Cajero: ${usuario.nombre} ${usuario.apellido}`, {
+               width: anchoDisponible,
+               align: 'left'
+           })
            .moveDown(0.5);
 
         const factura = venta.facturas[0];
@@ -998,7 +1014,7 @@ const generarReporteCancelacion = async (req, res) => {
            .moveDown(0.5)
            .font('Helvetica')
            .fontSize(8)
-           .text(venta.descripcion || 'Sin observación', {
+           .text(`${venta.facturas[0]?.factura_SAR?.[0]?.numero_factura_SAR || 'N/A'}: ${venta.descripcion || 'Sin observación'}`, {
                width: anchoDisponible,
                align: 'left'
            })
